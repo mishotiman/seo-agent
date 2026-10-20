@@ -35,6 +35,7 @@ class Config(BaseModel):
 
     model: str = Field(min_length=1)
     temperature: float = Field(0.0, ge=0, le=2)
+    max_text_chars: int = Field(8000, ge=100)  # visible-text cap per page sent to checks/model
     crawl: CrawlConfig = CrawlConfig()
 
 

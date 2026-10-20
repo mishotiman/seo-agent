@@ -32,3 +32,12 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Non-HTML responses get error="not_html" with status/content_type still filled; body only set for HTML
   - Redirect hops come from `response.history` (client follows redirects, max 10)
 ---
+## 2026-10-20 - US-004
+- Page fact extraction: `extract_facts(html, url, max_text_chars)` returns `PageFacts` (title, meta description, headings, canonical, robots meta, hreflang, viewport, OG/Twitter dicts, JSON-LD blocks with parsed_ok, images with alt, internal/external links, capped visible text + text_truncated)
+- Files: src/seo_audit/extractor.py, tests/test_extractor.py, src/seo_audit/config.py + config.yaml (new `max_text_chars`, default 8000)
+- **Learnings for future iterations:**
+  - Image `alt` is None when the attribute is missing and "" when present-but-empty (distinguish for the alt check)
+  - Links are absolutized, fragment-stripped and deduped; mailto/tel/javascript/#-only hrefs are skipped; internal = exact same hostname (subdomain handling is the crawler's job)
+  - Visible text is built with get_text(" "), so inline tags yield spaces ("world ."); don't assert exact punctuation spacing
+  - bs4 `rel` attr is a list; mypy strict needs explicit `str | list[str]` annotation
+---

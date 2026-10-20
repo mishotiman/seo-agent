@@ -1,6 +1,7 @@
 # Model is any LiteLLM model string, e.g. anthropic/claude-sonnet-5-5, openai/gpt-4o
 model: anthropic/claude-sonnet-5-5
 temperature: 0.0
+max_text_chars: 8000       # visible page text cap given to checks and the model
 
 crawl:
   max_pages: 50
