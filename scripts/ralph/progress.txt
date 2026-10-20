@@ -4,6 +4,7 @@
 - Source in `src/seo_audit/`, tests in `tests/`; package installed editable (`pip install -e .`)
 - Config: `load_config(path, env)` in config.py; env overrides use `SEO_AUDIT_<KEY>` and `SEO_AUDIT_<SECTION>__<KEY>`; raises `ConfigError`
 - CLI tests monkeypatch `cli._make_client` / `cli._make_llm` with a MockTransport client and a fake-completion LLMClient (see tests/test_audit.py)
+- Markdown snapshot lives in tests/snapshots/report.md; regenerate with `UPDATE_SNAPSHOTS=1 .venv/Scripts/python -m pytest tests/test_report.py`
 - Use `python`-less shells: on this machine call `py` (python.exe not on PATH)
 
 # Ralph Progress Log
@@ -111,4 +112,12 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Model checks run in `asyncio.to_thread` under a concurrency semaphore, so LLMClient usage accounting now takes a lock
   - Page checks / model checks run only for pages with HTML facts and status < 400; site mode records only non-HTTP fetch errors (not not_html) in report.errors, 4xx/5xx are left to the broken-link check
   - CLI overrides rebuild Config via `Config.model_validate(model_dump())` so --model/--max-pages go through validation; CliRunner in click 8.5 exposes `result.stdout`/`result.stderr` separately
+---
+## 2026-10-20 - US-013
+- Markdown renderer `render_markdown(report)` in report.py: summary (mode, model, counts by source/severity, dropped, tokens), crawl section with limit hit, top actions, findings grouped severity -> page ("Site-wide" first), each labeled [code] or [model, confidence X], errors section
+- `--format md` now renders via cli `_render`; removed the early rejection
+- Files: src/seo_audit/{report,cli}.py, tests/test_report.py, tests/snapshots/report.md, tests/test_audit.py
+- **Learnings for future iterations:**
+  - Snapshot test compares against tests/snapshots/report.md; set UPDATE_SNAPSHOTS=1 to rewrite it after intentional format changes
+  - Empty severity groups are omitted; multi-line evidence/recommendations are collapsed to one line so list items stay intact
 ---

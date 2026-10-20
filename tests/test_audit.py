@@ -126,7 +126,7 @@ def test_model_failure_keeps_code_findings(monkeypatch: pytest.MonkeyPatch, fake
 
 @pytest.mark.parametrize("args", [["not-a-url"], ["ftp://example.com/"], ["https://example.com/", "--mode", "bogus"],
                                   ["https://example.com/", "--max-pages", "0"],
-                                  ["https://example.com/", "--format", "md"]])
+                                  ["https://example.com/", "--format", "html"]])
 def test_invalid_input_exits_nonzero(fake: FakeModel, args: list[str]) -> None:
     result = run(*args)
     assert result.exit_code != 0
@@ -146,3 +146,11 @@ def test_total_failure_exits_1(monkeypatch: pytest.MonkeyPatch, fake: FakeModel)
     result = run("https://example.com/", "--mode", "page")
     assert result.exit_code == 1
     assert json.loads(result.stdout)["errors"][0]["stage"] == "fetch"
+
+
+def test_markdown_format(fake: FakeModel) -> None:
+    result = run("https://example.com/", "--mode", "site", "--format", "md")
+    assert result.exit_code == 0
+    assert result.stdout.startswith("# SEO audit report: https://example.com/")
+    assert "[code]" in result.stdout and "[model, confidence 0.60]" in result.stdout
+    assert "1. Fix duplicate titles" in result.stdout

@@ -15,6 +15,7 @@ from seo_audit.audit import InvalidInput, is_total_failure, run_audit, validate_
 from seo_audit.config import Config, ConfigError, load_config
 from seo_audit.fetcher import make_client
 from seo_audit.llm import LLMClient
+from seo_audit.report import render_markdown
 from seo_audit.schema import AuditReport, Mode
 
 app = typer.Typer(add_completion=False, help="SEO audit agent")
@@ -45,7 +46,7 @@ def _fail(message: str, code: int = 2) -> typer.Exit:
 def _render(report: AuditReport, fmt: OutputFormat) -> str:
     if fmt == OutputFormat.JSON:
         return report.model_dump_json(indent=2) + "\n"
-    raise AssertionError("unreachable: md rejected before the audit runs")
+    return render_markdown(report)
 
 
 def _load(config_path: Path | None, model: str | None, max_pages: int | None) -> Config:
@@ -74,8 +75,6 @@ def audit(
         cfg = _load(config, model, max_pages)
     except (InvalidInput, ConfigError) as exc:
         raise _fail(str(exc)) from exc
-    if fmt == OutputFormat.MD:
-        raise _fail("--format md is not available yet")
 
     async def go() -> AuditReport:
         async with _make_client(cfg.crawl.request_timeout) as client:
