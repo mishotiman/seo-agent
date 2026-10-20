@@ -41,3 +41,13 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Visible text is built with get_text(" "), so inline tags yield spaces ("world ."); don't assert exact punctuation spacing
   - bs4 `rel` attr is a list; mypy strict needs explicit `str | list[str]` annotation
 ---
+## 2026-10-20 - US-005
+- BFS crawler: `crawl(client, start_url, CrawlConfig, max_text_chars, max_bytes, clock)` returns `CrawlResult` (pages: list[CrawledPage{url, depth, fetch, facts}], summary: CrawlSummary)
+- Files: src/seo_audit/crawler.py, tests/test_crawler.py
+- **Learnings for future iterations:**
+  - Crawl is level-by-level; each level is gathered under a semaphore (concurrency cap); `clock` is injectable for time-budget tests
+  - `limit_hit` records the FIRST limit that caused skips (max_pages / max_depth / time_budget); skipped URLs go in summary.skipped_urls
+  - Extractor classifies subdomain links as external, so the crawler checks both link lists against `host_allowed`
+  - URL dedupe is only exact-match after fragment strip; US-006 should add real normalization (hook: the `seen` set / `target` computation in crawl)
+  - Tests in tests/ are not type-checked by mypy (only src)
+---
