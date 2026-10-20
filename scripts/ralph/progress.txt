@@ -24,3 +24,11 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - All report models use extra="forbid"; Finding.confidence defaults to 1.0 (code checks)
   - AuditReport already has fields for dropped_model_findings, errors, site_summary, token_usage for later stories
 ---
+## 2026-10-20 - US-003
+- Async page fetcher: `fetch_page(client, url, max_bytes)` returns `FetchResult` (final_url, status_code, redirect_chain, response_time, content_type, body, is_html, error/error_detail); never raises
+- Files: src/seo_audit/fetcher.py, tests/test_fetcher.py
+- **Learnings for future iterations:**
+  - Fetcher is async (httpx.AsyncClient via `make_client(timeout, transport=None)`); tests use `httpx.MockTransport` + `asyncio.run`, no pytest-asyncio needed
+  - Non-HTML responses get error="not_html" with status/content_type still filled; body only set for HTML
+  - Redirect hops come from `response.history` (client follows redirects, max 10)
+---
