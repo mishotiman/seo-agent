@@ -60,3 +60,11 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Sitemap URLs are seeded at depth 0 alongside the start URL; sitemap indexes followed (max 5 files / 1000 URLs); missing robots/sitemap (404 or error) is treated as "allow all / no seeds"
   - Mocked-site tests get 404 for /robots.txt and /sitemap.xml automatically, so older crawler tests are unaffected
 ---
+## 2026-10-20 - US-007
+- Deterministic page checks in `checks.py`: registry (`PAGE_CHECKS`, `@page_check`, `run_page_checks(PageContext)`) with 18 finding ids (title-*, meta-description-*, h1-missing/multiple, heading-skip, canonical-missing/off-host, noindex, viewport-missing, image-alt-missing, non-https, redirect-chain, slow-response, json-ld-invalid, og-missing)
+- Files: src/seo_audit/checks.py, tests/test_checks.py
+- **Learnings for future iterations:**
+  - A check is `(PageContext{facts, fetch, slow_response_seconds}) -> list[Finding]`; decorate with `@page_check` to register. Site-level checks (US-008) should get a parallel registry rather than reuse this one
+  - Thresholds are module constants in checks.py (title 30-60, description 70-160, slow >2s); wire to config later only if needed
+  - Non-https / canonical host use `fetch.final_url`, not the requested URL
+---
