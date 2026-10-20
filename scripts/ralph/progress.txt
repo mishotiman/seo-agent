@@ -93,3 +93,11 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - On LLMError nothing raises: `result.error` is a ReportError(stage="model_page_checks", url); the orchestrator (US-012) should sum `dropped` into `AuditReport.dropped_model_findings` and append errors
   - `llm.complete` is sync; wrap `run_model_checks` in `asyncio.to_thread` from async code
 ---
+## 2026-10-20 - US-011
+- Site-level synthesis in `synthesis.py`: `synthesize_site(llm, mode, pages, site_findings, crawl)` -> `SynthesisResult(site_summary, skipped, error)`; model input is `aggregate_findings` (per check id: pages_affected + up to 3 example URLs, severity-sorted) plus crawl counts, no page text
+- Files: src/seo_audit/synthesis.py, tests/test_synthesis.py
+- **Learnings for future iterations:**
+  - Returns `skipped=True` without calling the model unless mode is SITE; the orchestrator (US-012) should copy `result.site_summary` into `AuditReport.site_summary` and append `result.error` (stage "site_synthesis") to `errors`
+  - Takes the already-built `PageResult` list (code + model findings merged), so call it after all page/site checks finish
+  - Output is capped at 10 actions, blanks stripped; site-level findings are summarized by id + truncated evidence
+---
