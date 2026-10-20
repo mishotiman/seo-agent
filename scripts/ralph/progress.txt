@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Output models live in `src/seo_audit/schema.py`; after editing them run `.venv/Scripts/python -m seo_audit.schema` to regenerate schema/audit-report.schema.json
 - Python venv at `.venv`; run tools via `.venv/Scripts/python -m pytest` and `.venv/Scripts/python -m mypy` (strict, pydantic plugin; checks `src`)
 - Source in `src/seo_audit/`, tests in `tests/`; package installed editable (`pip install -e .`)
 - Config: `load_config(path, env)` in config.py; env overrides use `SEO_AUDIT_<KEY>` and `SEO_AUDIT_<SECTION>__<KEY>`; raises `ConfigError`
@@ -14,4 +15,12 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Repo had no commits and no `main`; branch ralph/seo-audit-agent created from unborn master
   - Env values are strings; pydantic coerces them to int/float/bool in lax mode
   - `crawl` models use extra="forbid" so typos in config.yaml are errors
+---
+## 2026-10-20 - US-002
+- Output schema: pydantic models Finding, PageResult, CrawlSummary, AuditReport (+ TokenUsage, ReportError, Severity/Source/Mode enums); JSON Schema exported to schema/audit-report.schema.json
+- Files: src/seo_audit/schema.py, schema/audit-report.schema.json, tests/test_schema.py, pyproject.toml (jsonschema dev deps)
+- **Learnings for future iterations:**
+  - Regenerate the schema file with `.venv/Scripts/python -m seo_audit.schema` after changing any model; a test fails if the committed file is stale
+  - All report models use extra="forbid"; Finding.confidence defaults to 1.0 (code checks)
+  - AuditReport already has fields for dropped_model_findings, errors, site_summary, token_usage for later stories
 ---

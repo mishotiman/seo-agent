@@ -1,0 +1,304 @@
+{
+  "$defs": {
+    "CrawlSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "pages_crawled": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Pages Crawled",
+          "type": "integer"
+        },
+        "pages_skipped": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Pages Skipped",
+          "type": "integer"
+        },
+        "limit_hit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Which limit stopped the crawl: max_pages, max_depth or time_budget",
+          "title": "Limit Hit"
+        },
+        "skipped_urls": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Skipped Urls",
+          "type": "array"
+        }
+      },
+      "title": "CrawlSummary",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Stable check identifier, e.g. 'title-missing'",
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "string"
+        },
+        "recommendation": {
+          "title": "Recommendation",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 1.0,
+          "description": "1.0 for deterministic code checks; model-estimated otherwise",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "severity",
+        "source",
+        "evidence",
+        "recommendation"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "Mode": {
+      "enum": [
+        "page",
+        "site"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "PageResult": {
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "final_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Final Url"
+        },
+        "status_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status Code"
+        },
+        "findings": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "title": "Findings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "PageResult",
+      "type": "object"
+    },
+    "ReportError": {
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "stage",
+        "message"
+      ],
+      "title": "ReportError",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "info"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "Source": {
+      "enum": [
+        "code",
+        "model"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "TokenUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "prompt_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Prompt Tokens",
+          "type": "integer"
+        },
+        "completion_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Completion Tokens",
+          "type": "integer"
+        },
+        "total_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Total Tokens",
+          "type": "integer"
+        }
+      },
+      "title": "TokenUsage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "url": {
+      "title": "Url",
+      "type": "string"
+    },
+    "mode": {
+      "$ref": "#/$defs/Mode"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "crawl": {
+      "$ref": "#/$defs/CrawlSummary",
+      "default": {
+        "pages_crawled": 0,
+        "pages_skipped": 0,
+        "limit_hit": null,
+        "skipped_urls": []
+      }
+    },
+    "pages": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/PageResult"
+      },
+      "title": "Pages",
+      "type": "array"
+    },
+    "site_findings": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Site Findings",
+      "type": "array"
+    },
+    "site_summary": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Site Summary",
+      "type": "array"
+    },
+    "dropped_model_findings": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Dropped Model Findings",
+      "type": "integer"
+    },
+    "errors": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ReportError"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "token_usage": {
+      "$ref": "#/$defs/TokenUsage",
+      "default": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  },
+  "required": [
+    "url",
+    "mode"
+  ],
+  "title": "AuditReport",
+  "type": "object"
+}
