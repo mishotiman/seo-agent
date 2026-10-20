@@ -76,3 +76,12 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Broken links = crawled pages with status >= 400 (only crawled URLs are checked); duplicates compare whitespace/case-normalized text
   - Reuses `_finding`/`_sample` helpers from checks.py
 ---
+## 2026-10-20 - US-009
+- LLM layer in `llm.py`: `LLMClient(model, temperature, completion=None)`; `.complete(system, prompt, ResponseModel)` -> validated pydantic instance; `.usage` -> TokenUsage (accumulated across calls)
+- Files: src/seo_audit/llm.py, tests/test_llm.py
+- **Learnings for future iterations:**
+  - Sync API (litellm.completion); from async code use `asyncio.to_thread(client.complete, ...)`
+  - Tests inject a fake `completion=` callable returning SimpleNamespace(choices, usage); no litellm mocking needed
+  - Raises `LLMError` on provider error (not retried) or invalid output after one retry; callers (US-010/011) must catch it and add a ReportError
+  - Model name is passed in by the caller (config.model or CLI --model); the client never reads it itself
+---
