@@ -71,3 +71,12 @@ def test_provider_error_wrapped() -> None:
 
     with pytest.raises(LLMError, match="rate limited"):
         LLMClient("m", completion=boom).complete("s", "p", Answer)
+
+
+def test_default_completion_drops_unsupported_params(monkeypatch: pytest.MonkeyPatch) -> None:
+    import litellm
+
+    fake = FakeModel('{"verdict": "ok", "score": 1}')
+    monkeypatch.setattr(litellm, "completion", fake)
+    LLMClient("anthropic/some-model", 0.0).complete("s", "p", Answer)
+    assert fake.calls[0]["drop_params"] is True

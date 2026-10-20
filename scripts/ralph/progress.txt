@@ -121,3 +121,14 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Snapshot test compares against tests/snapshots/report.md; set UPDATE_SNAPSHOTS=1 to rewrite it after intentional format changes
   - Empty severity groups are omitted; multi-line evidence/recommendations are collapsed to one line so list items stay intact
 ---
+## 2026-10-20 - US-014
+- README.md: prerequisites, install, API key/.env setup, page/site examples, exit codes, config + env overrides, switching model (config/env/--model), output overview, dev commands, known limitations
+- Fixed real-model runs: `_litellm_completion` now passes `drop_params=True` (default model anthropic/claude-sonnet-5-5 rejects temperature=0.0, which made every model check fail); test added
+- Verified every README command live against https://example.com (no API key: model stages produce `errors` entries, exit 0), fresh venv install, bad env/URL/--out (exit 2), unreachable host (exit 1)
+- Files: README.md, src/seo_audit/llm.py, tests/test_llm.py
+- **Learnings for future iterations:**
+  - LiteLLM auto-loads `.env` on import (load_dotenv walks up from site-packages, so the project-root .env is found with an in-project .venv)
+  - Newer models reject some params (temperature); keep `drop_params=True` on the real completion call
+  - Piping `seo-audit --help` into `head` on Windows crashes rich with OSError (broken pipe); not a CLI bug
+  - Model calls can't be verified live here (no API key in env); docs/tests rely on fake completions
+---

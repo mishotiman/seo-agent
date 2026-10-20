@@ -26,7 +26,9 @@ class LLMError(Exception):
 def _litellm_completion(**kwargs: Any) -> Any:
     import litellm
 
-    return litellm.completion(**kwargs)
+    # Drop params a provider rejects (e.g. some models only accept temperature=1)
+    # so switching models never needs code changes.
+    return litellm.completion(drop_params=True, **kwargs)
 
 
 def _strip_fence(text: str) -> str:
