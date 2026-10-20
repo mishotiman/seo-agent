@@ -28,6 +28,8 @@ class CrawlConfig(BaseModel):
     request_timeout: float = Field(15, gt=0)
     concurrency: int = Field(4, ge=1)
     include_subdomains: bool = False
+    respect_robots: bool = True
+    use_sitemap: bool = True
 
 
 class Config(BaseModel):

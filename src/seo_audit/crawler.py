@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Callable
-from urllib.parse import urldefrag, urlsplit
+from collections.abc import Awaitable, Callable
+from urllib.parse import urlsplit
 
 import httpx
 from pydantic import BaseModel, ConfigDict
@@ -13,7 +13,9 @@ from pydantic import BaseModel, ConfigDict
 from seo_audit.config import CrawlConfig
 from seo_audit.extractor import PageFacts, extract_facts
 from seo_audit.fetcher import DEFAULT_MAX_BYTES, FetchResult, fetch_page
+from seo_audit.politeness import Robots, load_robots, load_sitemap_urls
 from seo_audit.schema import CrawlSummary
+from seo_audit.urls import normalize_url
 
 
 class CrawledPage(BaseModel):
@@ -54,12 +56,15 @@ async def crawl(
     max_text_chars: int = 8000,
     max_bytes: int = DEFAULT_MAX_BYTES,
     clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> CrawlResult:
     """BFS from `start_url`; stops at max_pages, max_depth or total_time_budget.
 
     `limit_hit` records the first limit that caused URLs to be skipped; skipped URLs are listed.
+    URLs are normalized for dedupe, robots.txt disallows are skipped (and listed), Crawl-delay
+    spaces out requests, and sitemap.xml URLs seed the first level.
     """
-    start_url = urldefrag(start_url)[0]
+    start_url = normalize_url(start_url)
     start_host = (urlsplit(start_url).hostname or "").lower()
     deadline = clock() + config.total_time_budget
     semaphore = asyncio.Semaphore(config.concurrency)
@@ -68,6 +73,10 @@ async def crawl(
     skipped: list[str] = []
     limit_hit: str | None = None
     seen = {start_url}
+    robots = await load_robots(client, start_url) if config.respect_robots else Robots()
+    delay = robots.crawl_delay()
+    next_slot = clock()
+    delay_lock = asyncio.Lock()
 
     def record_limit(name: str) -> None:
         nonlocal limit_hit
@@ -76,6 +85,13 @@ async def crawl(
 
     async def fetch_one(url: str, depth: int) -> CrawledPage | None:
         async with semaphore:
+            if delay:
+                nonlocal next_slot
+                async with delay_lock:
+                    wait = next_slot - clock()
+                    if wait > 0:
+                        await sleep(wait)
+                    next_slot = max(next_slot, clock()) + delay
             remaining = deadline - clock()
             if remaining <= 0:
                 return None
@@ -87,8 +103,17 @@ async def crawl(
         return CrawledPage(url=url, depth=depth, fetch=result, facts=facts)
 
     level = [start_url]
+    if config.use_sitemap:
+        for loc in await load_sitemap_urls(client, start_url, robots):
+            target = normalize_url(loc)
+            if target not in seen and host_allowed(target, start_host, config.include_subdomains):
+                seen.add(target)
+                level.append(target)
     depth = 0
     while level:
+        allowed = [u for u in level if robots.allowed(u)]
+        skipped.extend(u for u in level if u not in allowed)
+        level = allowed
         room = config.max_pages - len(pages)
         batch, overflow = level[:room], level[room:]
         if overflow:
@@ -105,7 +130,7 @@ async def crawl(
             if page.facts is None:
                 continue
             for link in (*page.facts.internal_links, *page.facts.external_links):
-                target = urldefrag(link.url)[0]
+                target = normalize_url(link.url)
                 if target in seen or not host_allowed(target, start_host, config.include_subdomains):
                     continue
                 seen.add(target)

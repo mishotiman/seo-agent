@@ -10,3 +10,5 @@ crawl:
   request_timeout: 15      # seconds per request
   concurrency: 4
   include_subdomains: false
+  respect_robots: true     # skip URLs disallowed by robots.txt and honor Crawl-delay
+  use_sitemap: true        # seed the crawl from sitemap.xml when present

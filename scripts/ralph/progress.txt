@@ -51,3 +51,12 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - URL dedupe is only exact-match after fragment strip; US-006 should add real normalization (hook: the `seen` set / `target` computation in crawl)
   - Tests in tests/ are not type-checked by mypy (only src)
 ---
+## 2026-10-20 - US-006
+- URL normalization (`normalize_url` in urls.py), robots.txt + sitemap loading (politeness.py: `Robots`, `load_robots`, `load_sitemap_urls`), wired into crawler; new config flags `crawl.respect_robots`, `crawl.use_sitemap`
+- Files: src/seo_audit/{urls,politeness,crawler,config}.py, config.yaml, tests/test_politeness.py
+- **Learnings for future iterations:**
+  - Robots-blocked URLs go into summary.skipped_urls without setting limit_hit
+  - Crawl-delay is enforced via a shared next-slot lock in fetch_one; `crawl(..., sleep=)` is injectable (fake sleep doesn't advance clock, so waits stack up in tests)
+  - Sitemap URLs are seeded at depth 0 alongside the start URL; sitemap indexes followed (max 5 files / 1000 URLs); missing robots/sitemap (404 or error) is treated as "allow all / no seeds"
+  - Mocked-site tests get 404 for /robots.txt and /sitemap.xml automatically, so older crawler tests are unaffected
+---
