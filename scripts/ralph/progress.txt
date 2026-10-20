@@ -85,3 +85,11 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Raises `LLMError` on provider error (not retried) or invalid output after one retry; callers (US-010/011) must catch it and add a ReportError
   - Model name is passed in by the caller (config.model or CLI --model); the client never reads it itself
 ---
+## 2026-10-20 - US-010
+- Model-judged page checks in `model_checks.py`: `run_model_checks(llm, facts)` -> `ModelCheckResult(findings, dropped, error)`; prompt built from facts + truncated text only (`build_prompt`)
+- Files: src/seo_audit/model_checks.py, tests/test_model_checks.py
+- **Learnings for future iterations:**
+  - Model returns `ModelFindings` with `evidence_quote`; quote is verified (whitespace/case-insensitive) against title + meta description + visible text, else dropped and counted in `result.dropped`
+  - On LLMError nothing raises: `result.error` is a ReportError(stage="model_page_checks", url); the orchestrator (US-012) should sum `dropped` into `AuditReport.dropped_model_findings` and append errors
+  - `llm.complete` is sync; wrap `run_model_checks` in `asyncio.to_thread` from async code
+---
