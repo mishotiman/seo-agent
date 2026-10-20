@@ -132,3 +132,11 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Piping `seo-audit --help` into `head` on Windows crashes rich with OSError (broken pipe); not a CLI bug
   - Model calls can't be verified live here (no API key in env); docs/tests rely on fake completions
 ---
+## 2026-10-20 - US-015
+- DESIGN.md: code-vs-model split table with pros/cons, how the model layer stays swappable, crawl bounds table + trade-offs, output structure, source/confidence semantics, evidence-verification step (with its limits), synthesis, known limitations
+- Files: DESIGN.md
+- **Learnings for future iterations:**
+  - DESIGN.md links to EVALUATION.md (US-016) - keep that filename
+  - Claims in DESIGN.md were checked against crawler.py/audit.py/model_checks.py; if bounds or thresholds change, update its tables
+  - Doc-only story: mypy and pytest still run green (118 tests)
+---
