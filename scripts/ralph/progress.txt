@@ -68,3 +68,11 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Thresholds are module constants in checks.py (title 30-60, description 70-160, slow >2s); wire to config later only if needed
   - Non-https / canonical host use `fetch.final_url`, not the requested URL
 ---
+## 2026-10-20 - US-008
+- Site-level checks in `site_checks.py`: registry (`SITE_CHECKS`, `@site_check`, `run_site_checks(SiteContext)`) with ids duplicate-titles, duplicate-meta-descriptions, broken-internal-links, robots-txt-missing/empty, sitemap-missing/invalid/empty; `probe_site_files(client, start_url)` fetches robots.txt + sitemap.xml into `SiteFile(status, text)`
+- Files: src/seo_audit/site_checks.py, tests/test_site_checks.py
+- **Learnings for future iterations:**
+  - `SiteContext(pages: list[CrawledPage], robots, sitemap)`; the orchestrator (US-012) must call `probe_site_files` itself, since the crawler doesn't expose robots/sitemap text
+  - Broken links = crawled pages with status >= 400 (only crawled URLs are checked); duplicates compare whitespace/case-normalized text
+  - Reuses `_finding`/`_sample` helpers from checks.py
+---
