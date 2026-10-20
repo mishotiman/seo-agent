@@ -140,3 +140,11 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Claims in DESIGN.md were checked against crawler.py/audit.py/model_checks.py; if bounds or thresholds change, update its tables
   - Doc-only story: mypy and pytest still run green (118 tests)
 ---
+## 2026-10-20 - US-016
+- EVALUATION.md: evaluation proposal covering per-check fixtures with precision/recall, labeled page set with inter-annotator agreement, LLM-as-judge calibration against humans, reference-tool comparison (Lighthouse SEO, Screaming Frog), robustness case table (incl. JS-heavy, prompt injection), multi-model comparison (quality, cost, latency, variance), tiered CI thresholds and success metrics, threats to validity
+- Files: EVALUATION.md
+- **Learnings for future iterations:**
+  - EVALUATION.md is explicitly a plan: no datasets or measured numbers exist yet, and the doc says so; thresholds are starting points to be set from a measured baseline
+  - It states "27 finding ids" for code checks (count of `_finding("...")` ids in checks.py + site_checks.py); update if checks are added
+  - Doc-only story: mypy and pytest still green (118 tests). All PRD stories now pass
+---
