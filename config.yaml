@@ -1,0 +1,11 @@
+# Model is any LiteLLM model string, e.g. anthropic/claude-sonnet-5-5, openai/gpt-4o
+model: anthropic/claude-sonnet-5-5
+temperature: 0.0
+
+crawl:
+  max_pages: 50
+  max_depth: 3
+  total_time_budget: 300   # seconds for the whole crawl
+  request_timeout: 15      # seconds per request
+  concurrency: 4
+  include_subdomains: false

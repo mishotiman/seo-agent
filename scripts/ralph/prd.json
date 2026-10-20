@@ -1,0 +1,270 @@
+{
+  "project": "SEO Audit Agent",
+  "branchName": "ralph/seo-audit-agent",
+  "description": "SEO Audit Agent - audit a single page or bounded whole-site crawl from a URL. Deterministic checks in code, subjective checks via a config-swappable LLM (LiteLLM), schema-validated JSON output. Python 3.11+, CLI only, static HTML only.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Project scaffold and configuration",
+      "description": "As a developer, I want a configured Python project so that settings (model, crawl limits) live in config, not code.",
+      "acceptanceCriteria": [
+        "pyproject.toml declares dependencies: httpx, lxml or beautifulsoup4, litellm, pydantic, pyyaml, typer or argparse, pytest",
+        "config.yaml contains model, temperature, and crawl limits (max_pages=50, max_depth=3, total_time_budget, request_timeout)",
+        "Environment variables override config.yaml values",
+        ".env.example lists API key variables and .env is in .gitignore",
+        "Config loads into a validated pydantic model; invalid config exits with a clear error message",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Output schema",
+      "description": "As a consumer of the report, I want a defined JSON schema so that results are machine-readable.",
+      "acceptanceCriteria": [
+        "Pydantic models exist for AuditReport, CrawlSummary, PageResult, Finding",
+        "Finding has fields: id, category, severity (critical|high|medium|low|info), source (code|model), evidence, recommendation, confidence",
+        "JSON Schema is exported to schema/audit-report.schema.json",
+        "A test validates a sample report against the exported schema",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Page fetcher",
+      "description": "As the agent, I want to fetch a page with sane limits so that one bad URL cannot hang the run.",
+      "acceptanceCriteria": [
+        "Fetch uses a clear User-Agent, request timeout, and max response size",
+        "Result records final URL, status code, redirect chain, response time, content type",
+        "Non-HTML content, timeouts, and connection errors are returned as results, not raised exceptions",
+        "Mocked-HTTP tests cover success, redirect, 404, timeout, non-HTML",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Page fact extraction",
+      "description": "As the agent, I want structured facts extracted from HTML so that code checks and the model work from clean data.",
+      "acceptanceCriteria": [
+        "Extracts title, meta description, headings with levels, canonical, robots meta, hreflang, viewport, Open Graph and Twitter tags",
+        "Extracts JSON-LD blocks (raw text plus parse success flag), images with alt, internal and external links, visible text",
+        "Visible text is truncated to a configurable character cap",
+        "Fixture-HTML tests cover each extracted field",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Crawler core with depth, page and time bounds",
+      "description": "As a user, I want site mode to stop at defined limits so that cost and runtime are predictable.",
+      "acceptanceCriteria": [
+        "Breadth-first crawl from the start URL using the fetcher and link extraction",
+        "Enforces max_pages, max_depth, and total_time_budget from config",
+        "Stays on the same host; subdomains included only if configured",
+        "Concurrency is capped by config",
+        "CrawlSummary records pages crawled, pages skipped, and which limit was hit",
+        "Tests with mocked site cover each limit being hit",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Crawler politeness, URL normalization and sitemap seeding",
+      "description": "As a site owner, I want the crawler to behave politely and avoid duplicate URLs so that audits do not hammer or loop on my site.",
+      "acceptanceCriteria": [
+        "robots.txt disallow rules are respected and blocked URLs are recorded as skipped",
+        "Crawl-delay is honored",
+        "URLs are normalized and deduped: fragments removed, trailing slashes, tracking params (utm_*, gclid, fbclid)",
+        "URLs from sitemap.xml are used as seeds when present",
+        "Tests cover robots blocking, crawl-delay, normalization cases, sitemap seeding",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Deterministic page-level checks",
+      "description": "As a user, I want rule-based per-page checks run in code so that results are fast, free, and reproducible.",
+      "acceptanceCriteria": [
+        "Checks implemented: missing/short/long title, missing/short/long meta description, H1 count, heading hierarchy skips, canonical missing or off-host, noindex present, missing viewport",
+        "Checks implemented: images missing alt, non-HTTPS, redirect chains longer than 1 hop, slow response, invalid JSON-LD, missing Open Graph tags",
+        "Every finding has source 'code', a severity, evidence, and a recommendation",
+        "Checks are registered in a check registry so new checks can be added without modifying the agent loop",
+        "One test per check using fixture pages with known issues, plus a clean-page test with zero findings",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Deterministic site-level checks",
+      "description": "As a site owner, I want cross-page checks so that I find systemic issues like duplicate titles and broken links.",
+      "acceptanceCriteria": [
+        "Detects duplicate titles and duplicate meta descriptions across crawled pages",
+        "Detects broken internal links (4xx/5xx targets among crawled or checked URLs)",
+        "Validates robots.txt presence and sitemap.xml presence and parseability",
+        "Findings have source 'code' with evidence listing affected URLs",
+        "Tests with multi-page fixtures cover each check",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Model-swappable LLM layer",
+      "description": "As a developer, I want a single model interface so that changing providers needs only config.",
+      "acceptanceCriteria": [
+        "All model calls go through one llm.complete() wrapper using LiteLLM",
+        "Model name is read only from config, env, or CLI override (e.g. anthropic/claude-sonnet-5-5, openai/gpt-4o)",
+        "Wrapper requests JSON output, validates it against a pydantic model, and retries once on malformed output",
+        "Token usage is accumulated per run and exposed for the report",
+        "Tests with a fake model cover valid response, malformed-then-valid, and persistent failure",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Model-judged page checks",
+      "description": "As a user, I want subjective assessments (title/description quality, content quality, search intent) so that I get insight rules cannot give.",
+      "acceptanceCriteria": [
+        "Per-page prompt receives extracted facts and truncated text, never raw HTML",
+        "Model findings must include an evidence quote; findings whose quote is not found in the page text are dropped and the drop count is recorded",
+        "Model findings have source 'model' and a confidence value",
+        "On model failure, code findings are kept and an error entry is added to the report",
+        "Tests with a fake model cover valid findings, unverifiable evidence dropped, and model failure",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Site-level synthesis",
+      "description": "As a site owner, I want a summary of cross-page patterns and top priorities so that I know what to fix first.",
+      "acceptanceCriteria": [
+        "Model input is aggregated findings (counts per check plus example URLs), not full page text",
+        "Output populates site_summary with a prioritized list of top actions",
+        "Runs only in site mode; skipped in page mode",
+        "Model failure leaves site_summary empty with an error entry, without aborting the report",
+        "Tests with a fake model pass",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Audit orchestrator and CLI",
+      "description": "As a user, I want a command to run an audit so that I can use the agent from the terminal.",
+      "acceptanceCriteria": [
+        "Command: seo-audit <url> --mode page|site [--config PATH] [--model NAME] [--max-pages N] [--out FILE] [--format json|md]",
+        "Page mode audits only the given URL; site mode runs the crawler, page checks, site checks, model checks, and synthesis",
+        "--model overrides the configured model without code changes",
+        "Progress is printed to stderr; report goes to stdout or --out",
+        "Exit code is non-zero on invalid input or total failure",
+        "JSON output validates against schema/audit-report.schema.json and includes token usage",
+        "End-to-end test against a mocked site with a fake model passes",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Markdown report renderer",
+      "description": "As a practitioner, I want a readable report so that I can share findings.",
+      "acceptanceCriteria": [
+        "Renders summary, crawl limits hit, and findings grouped by severity then by page",
+        "Each finding is labeled as code- or model-derived",
+        "--format md uses the renderer",
+        "Snapshot test passes",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "README setup and usage docs",
+      "description": "As a reviewer, I want clear setup docs so that I can install, run, and switch models quickly.",
+      "acceptanceCriteria": [
+        "README.md covers prerequisites, install, env/API key setup, page and site run examples, and how to switch the model via config and --model",
+        "README lists known limitations (no JavaScript rendering, static HTML only)",
+        "Every command shown in README was executed successfully (or --help verified) during this story",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "DESIGN.md design decisions",
+      "description": "As a reviewer, I want the design rationale written down so that I can judge the trade-offs.",
+      "acceptanceCriteria": [
+        "DESIGN.md lists which checks run in code and which use the model, with the reason and pros/cons for the split",
+        "DESIGN.md explains how the crawl is bounded (pages, depth, time, robots, concurrency, normalization) and the trade-offs",
+        "DESIGN.md explains the output structure, the source/confidence fields, and the evidence-verification step",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "EVALUATION.md evaluation proposal",
+      "description": "As a reviewer, I want a rigorous evaluation proposal so that agent quality can be measured.",
+      "acceptanceCriteria": [
+        "EVALUATION.md covers code-check fixtures with precision/recall per check",
+        "EVALUATION.md covers a labeled page set for model checks with human-agreement measurement, and LLM-as-judge calibrated against human scores",
+        "EVALUATION.md covers comparison to a reference tool (e.g. Lighthouse SEO or Screaming Frog), robustness cases (broken sites, robots-blocked, JS-heavy), and multi-model comparison on score, cost, latency, and variance",
+        "EVALUATION.md defines CI regression thresholds and success metrics",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

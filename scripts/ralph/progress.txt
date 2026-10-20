@@ -1,0 +1,17 @@
+## Codebase Patterns
+- Python venv at `.venv`; run tools via `.venv/Scripts/python -m pytest` and `.venv/Scripts/python -m mypy` (strict, pydantic plugin; checks `src`)
+- Source in `src/seo_audit/`, tests in `tests/`; package installed editable (`pip install -e .`)
+- Config: `load_config(path, env)` in config.py; env overrides use `SEO_AUDIT_<KEY>` and `SEO_AUDIT_<SECTION>__<KEY>`; raises `ConfigError`
+- Use `python`-less shells: on this machine call `py` (python.exe not on PATH)
+
+# Ralph Progress Log
+Started: Tue Oct 20 14:12:21 FLEDT 2026
+---
+## 2026-10-20 - US-001
+- Scaffold: pyproject.toml, config.yaml, .env.example, .gitignore, pydantic Config with env overrides, stub typer CLI
+- Files: pyproject.toml, config.yaml, .env.example, .gitignore, src/seo_audit/{__init__,config,cli}.py, tests/test_config.py
+- **Learnings for future iterations:**
+  - Repo had no commits and no `main`; branch ralph/seo-audit-agent created from unborn master
+  - Env values are strings; pydantic coerces them to int/float/bool in lax mode
+  - `crawl` models use extra="forbid" so typos in config.yaml are errors
+---
