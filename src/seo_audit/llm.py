@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Callable
 from typing import Any, TypeVar
 
@@ -47,6 +48,7 @@ class LLMClient:
         self.temperature = temperature
         self._completion = completion or _litellm_completion
         self._usage = TokenUsage()
+        self._lock = threading.Lock()  # complete() may run in worker threads
 
     @property
     def usage(self) -> TokenUsage:
@@ -59,11 +61,12 @@ class LLMClient:
         prompt = int(getattr(usage, "prompt_tokens", 0) or 0)
         completion = int(getattr(usage, "completion_tokens", 0) or 0)
         total = int(getattr(usage, "total_tokens", 0) or 0) or prompt + completion
-        self._usage = TokenUsage(
-            prompt_tokens=self._usage.prompt_tokens + prompt,
-            completion_tokens=self._usage.completion_tokens + completion,
-            total_tokens=self._usage.total_tokens + total,
-        )
+        with self._lock:
+            self._usage = TokenUsage(
+                prompt_tokens=self._usage.prompt_tokens + prompt,
+                completion_tokens=self._usage.completion_tokens + completion,
+                total_tokens=self._usage.total_tokens + total,
+            )
 
     def complete(self, system: str, prompt: str, response_model: type[T]) -> T:
         """Ask for JSON, validate against `response_model`, retry once if malformed."""

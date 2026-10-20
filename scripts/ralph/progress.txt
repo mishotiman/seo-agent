@@ -3,6 +3,7 @@
 - Python venv at `.venv`; run tools via `.venv/Scripts/python -m pytest` and `.venv/Scripts/python -m mypy` (strict, pydantic plugin; checks `src`)
 - Source in `src/seo_audit/`, tests in `tests/`; package installed editable (`pip install -e .`)
 - Config: `load_config(path, env)` in config.py; env overrides use `SEO_AUDIT_<KEY>` and `SEO_AUDIT_<SECTION>__<KEY>`; raises `ConfigError`
+- CLI tests monkeypatch `cli._make_client` / `cli._make_llm` with a MockTransport client and a fake-completion LLMClient (see tests/test_audit.py)
 - Use `python`-less shells: on this machine call `py` (python.exe not on PATH)
 
 # Ralph Progress Log
@@ -100,4 +101,14 @@ Started: Tue Oct 20 14:12:21 FLEDT 2026
   - Returns `skipped=True` without calling the model unless mode is SITE; the orchestrator (US-012) should copy `result.site_summary` into `AuditReport.site_summary` and append `result.error` (stage "site_synthesis") to `errors`
   - Takes the already-built `PageResult` list (code + model findings merged), so call it after all page/site checks finish
   - Output is capped at 10 actions, blanks stripped; site-level findings are summarized by id + truncated evidence
+---
+## 2026-10-20 - US-012
+- Orchestrator `audit.py`: `run_audit(url, mode, config, client, llm, progress)` -> AuditReport (page mode: single fetch + code + model checks; site mode adds crawl, probe_site_files, site checks, synthesis); `is_total_failure(report)`; `validate_url`/`InvalidInput`
+- CLI `seo-audit <url> --mode --config --model --max-pages --out --format` in cli.py (single typer command; progress to stderr, JSON to stdout/--out; exit 2 on invalid input/config, 1 on total failure)
+- Files: src/seo_audit/{audit,cli,llm}.py, tests/test_audit.py
+- **Learnings for future iterations:**
+  - `--format md` is currently rejected with exit 2 ("not available yet"); US-013 should add the renderer and replace the early check in `audit()` plus the `_render` stub in cli.py
+  - Model checks run in `asyncio.to_thread` under a concurrency semaphore, so LLMClient usage accounting now takes a lock
+  - Page checks / model checks run only for pages with HTML facts and status < 400; site mode records only non-HTTP fetch errors (not not_html) in report.errors, 4xx/5xx are left to the broken-link check
+  - CLI overrides rebuild Config via `Config.model_validate(model_dump())` so --model/--max-pages go through validation; CliRunner in click 8.5 exposes `result.stdout`/`result.stderr` separately
 ---
