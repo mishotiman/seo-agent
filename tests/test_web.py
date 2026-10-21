@@ -362,3 +362,15 @@ def test_results_summary_assets() -> None:
     css = client.get("/static/styles.css").text
     for selector in (".stat-tile", ".severity-row", ".notice", ".fix-list"):
         assert selector in css
+
+
+def test_findings_list_assets() -> None:
+    client = TestClient(create_app())
+    text = client.get("/static/report.js").text
+    for expected in ("Site-wide", "site_findings", "status_code", "aria-expanded", "aria-pressed", "Confidence",
+                     "No findings match", "MAX_OPEN_PAGES", "Filter by severity", "Filter by source", "recommendation"):
+        assert expected in text
+    assert "innerHTML" not in text and "insertAdjacentHTML" not in text and "outerHTML" not in text
+    css = client.get("/static/styles.css").text
+    for selector in (".chip", ".finding-group", ".finding-head", ".group-head", ".badge-source"):
+        assert selector in css

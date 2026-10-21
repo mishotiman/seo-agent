@@ -104,3 +104,14 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - Classes added: `.stat-tiles/.stat-tile/.stat-value/.stat-label`, `.severity-row`, `.report-meta`, `.notice`, `.section-title`, `.fix-list`
   - No browser tooling again: manual visual verification (desktop/360px, light/dark) still needed
 ---
+## 2026-10-21 - US-011
+- Findings list in `report.js` (`buildFindings`): "Site-wide" group first, then one collapsible group per page (URL, HTTP status, count), findings sorted by severity; rows are buttons with `aria-expanded` showing severity/source badges, check id, category; expanded body shows evidence, recommendation, confidence % (model findings only). Severity chips (All + each, with counts) and source chips (All/Code/Model) filter in place by toggling `hidden`; "No findings match the current filters." when empty. First page + site-wide open; pages after the first start collapsed when there are more than 5 pages (`MAX_OPEN_PAGES`)
+- Files: src/seo_audit/web/static/{report.js,styles.css}, tests/test_web.py
+- **Learnings for future iterations:**
+  - `toggleButton(className, panel, expanded)` is the shared expand/collapse helper (native button => Enter/Space free); filter chips use `aria-pressed`
+  - A page with zero findings already shows a calm "No findings" inside its group (`.group-empty`); US-012 only needs to cover report-level states
+  - Filtering hides groups with no matches; group count shows "n of m" while filtered
+  - Smoke-test report.js in node with a tiny fake DOM (El class with append/setAttribute/addEventListener/click) and `eval` of the file; trigger via the captured `audit:finished` handler
+  - Writing files via bash/python heredocs containing quotes failed once; use the Edit tool for JS/CSS
+  - No browser tooling again: manual check of 1280x800 above-the-fold behaviour, 360px and dark mode still needed
+---
