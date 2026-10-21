@@ -213,6 +213,19 @@ notice patterns that no check detected. Its output is capped at ten actions. It 
 page mode, and on failure `site_summary` is left empty with an error entry rather than failing
 the report.
 
+## 4. Web UI
+
+The UI (`src/seo_audit/web/`) is a thin layer over `run_audit`; it holds no audit logic. A FastAPI
+app starts a job that calls `run_audit` with a progress callback that appends to the job's message
+list. Jobs live in memory (at most 20 kept, one running at a time), which is enough for a local
+single-user tool and avoids a database. Progress reaches the browser over Server-Sent Events, which
+fit a one-way stream of text lines, need no extra dependency, and reconnect natively; the page falls
+back to polling `GET /api/audits/{id}` if the stream drops. The frontend is vanilla JS and CSS with
+no build step and no CDN, so `pip install` is the only setup, the page works offline, and a strict
+`Content-Security-Policy: default-src 'self'` (no inline scripts or styles) is possible. All report
+text is inserted with `textContent`, since it comes from audited sites. The server binds to
+`127.0.0.1` and has no authentication, so exposing it is the user's explicit choice and is warned about.
+
 ## Known limitations
 
 - Static HTML only; no JavaScript rendering.

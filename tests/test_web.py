@@ -31,6 +31,40 @@ def test_index_serves_placeholder_page() -> None:
     assert "<title>SEO Audit</title>" in response.text
 
 
+def test_index_has_security_headers() -> None:
+    response = TestClient(create_app()).get("/")
+    assert response.headers["content-security-policy"] == "default-src 'self'"
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def _run_serve(monkeypatch: pytest.MonkeyPatch, args: list[str]) -> tuple[str, dict[str, Any]]:
+    calls: dict[str, Any] = {}
+
+    def fake_run(app: Any, **kwargs: Any) -> None:
+        calls.update(kwargs)
+
+    monkeypatch.setattr(server.uvicorn, "run", fake_run)
+    cli = typer.Typer()
+    cli.command()(server.serve)
+    result = CliRunner().invoke(cli, args)
+    assert result.exit_code == 0
+    return result.output, calls
+
+
+def test_serve_binds_loopback_by_default_without_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+    output, calls = _run_serve(monkeypatch, [])
+    assert calls["host"] == "127.0.0.1"
+    assert "http://127.0.0.1:8000" in output
+    assert "no authentication" not in output
+
+
+def test_serve_warns_when_exposed(monkeypatch: pytest.MonkeyPatch) -> None:
+    output, calls = _run_serve(monkeypatch, ["--host", "0.0.0.0"])
+    assert calls["host"] == "0.0.0.0"
+    assert "no authentication" in output
+    assert "arbitrary URLs" in output
+
+
 def test_server_options() -> None:
     app = typer.Typer()
     app.command()(server.serve)

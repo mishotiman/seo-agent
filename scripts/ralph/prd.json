@@ -235,7 +235,7 @@
         "Verify in browser using dev-browser skill (full run: page audit end to end, then a site audit with the cancel button)"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": ""
     }
   ]

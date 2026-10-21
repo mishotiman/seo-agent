@@ -23,6 +23,10 @@ from seo_audit.schema import AuditReport, Mode
 from seo_audit.web.jobs import HttpFactory, Job, JobBusy, JobManager, JobState, LLMFactory
 
 STATIC_DIR = Path(__file__).parent / "static"
+SECURITY_HEADERS = {
+    "Content-Security-Policy": "default-src 'self'",
+    "X-Content-Type-Options": "nosniff",
+}
 EVENT_POLL_SECONDS = 0.1
 
 
@@ -183,7 +187,11 @@ def create_app(
 
     @app.get("/")
     async def index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html", media_type="text/html; charset=utf-8")
+        return FileResponse(
+            STATIC_DIR / "index.html",
+            media_type="text/html; charset=utf-8",
+            headers=SECURITY_HEADERS,
+        )
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

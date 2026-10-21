@@ -85,6 +85,43 @@ Exit codes:
 - `1`: total failure, meaning no page could be fetched
 - `2`: invalid input or config, such as a bad URL, unreadable or invalid `config.yaml`, or an unwritable `--out` path
 
+## Web UI
+
+A small local web interface sits on top of the same audit agent.
+
+```bash
+pip install -e .        # installs the seo-audit-ui command (the venv from Install)
+seo-audit-ui            # prints the URL to open, http://127.0.0.1:8000 by default
+seo-audit-ui --host 127.0.0.1 --port 8080
+```
+
+Open the printed URL in a browser. The page has a single column with a form on top
+and the results below, in a calm slate and ice-blue theme that follows the system
+light or dark setting.
+
+- **Form:** enter a URL, choose **Page** (one URL) or **Site** (a bounded crawl), and
+  for Site set the max pages (up to the `crawl.max_pages` from `config.yaml`). The
+  model field is pre-filled from the config and accepts any LiteLLM model, such as
+  `openai/gpt-4o`. Press Enter in the URL field or click **Run audit**.
+- **Progress:** a live log shows what the agent is doing. **Cancel** stops the audit.
+  When it finishes, the log collapses to a "Finished in N s" note.
+- **Results:** summary tiles (pages, findings per severity), crawl limits hit,
+  "What to fix first" (site mode), then findings grouped site-wide and per page.
+  Filter by severity or by source (code or model) and click a finding for its
+  evidence and recommendation. Audit errors are listed under "Issues during the audit".
+- **Downloads:** **Download Markdown** and **Download JSON** give the same reports as
+  `seo-audit --format md` and `--format json`. **New audit** resets the page and keeps
+  your last values.
+
+API keys come from `.env` or the environment, exactly as for the CLI, and the config
+is read from `config.yaml` in the directory where you start the command.
+
+Limitations: only one audit runs at a time (a second start is rejected), finished
+audits are kept in memory only (the last 20, lost on restart), and the UI has **no
+authentication**. It binds to `127.0.0.1` by default. If you pass `--host 0.0.0.0`,
+anyone who can reach the port can make your machine fetch arbitrary URLs and spend
+your model quota, and the command prints a warning.
+
 ## Configuration
 
 Settings live in [`config.yaml`](config.yaml), which is read from the current

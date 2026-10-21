@@ -123,3 +123,12 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - `buildIssues` reuses `toggleButton`/`group-head` styling; keep error text via textContent only
   - Smoke-tested all three render branches in node with a fake DOM; no browser tooling again: manual visual check (desktop/360px, light/dark, download links, New audit) still needed
 ---
+## 2026-10-21 - US-013
+- `seo-audit-ui` warns on stderr when `--host` is not loopback (no authentication, can fetch arbitrary URLs); `GET /` sends `Content-Security-Policy: default-src 'self'` and `X-Content-Type-Options: nosniff` (`SECURITY_HEADERS` in web/__init__.py); README "Web UI" section and DESIGN.md section 4 added
+- Files: src/seo_audit/web/{__init__,server}.py, tests/test_web.py, README.md, DESIGN.md
+- **Learnings for future iterations:**
+  - Tests mock `server.uvicorn.run` and invoke `serve` through a Typer app + CliRunner (output includes stderr)
+  - Verified with the real server: `curl -si http://127.0.0.1:PORT/` shows both headers; static assets already had no inline script/style
+  - Only the HTML page carries the security headers; JSON/SSE/downloads do not
+  - No browser tooling again: the full manual run (page audit, site audit + cancel, 360px, dark mode) across US-007..US-013 still needs a human check
+---
