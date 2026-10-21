@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 from fastapi import Body, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from seo_audit.audit import InvalidInput, validate_url
 from seo_audit.config import Config, ConfigError, load_config
@@ -183,5 +184,7 @@ def create_app(
     @app.get("/")
     async def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html", media_type="text/html; charset=utf-8")
+
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     return app

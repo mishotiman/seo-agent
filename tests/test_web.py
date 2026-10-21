@@ -297,3 +297,24 @@ def test_report_unknown_and_unfinished(tmp_path: Path, monkeypatch: pytest.Monke
             assert "detail" in running.json()
         client.post(f"/api/audits/{job_id}/cancel")
         assert client.get(f"/api/audits/{job_id}/report.md").status_code == 409
+
+
+def test_static_assets_are_served_and_linked() -> None:
+    client = TestClient(create_app())
+    page = client.get("/").text
+    assert "/static/styles.css" in page
+    assert "/static/app.js" in page
+    css = client.get("/static/styles.css")
+    assert css.status_code == 200
+    assert "text/css" in css.headers["content-type"]
+    assert "prefers-color-scheme: dark" in css.text
+    assert "--sev-critical-fg" in css.text
+    assert client.get("/static/app.js").status_code == 200
+    assert "http://" not in css.text and "https://" not in css.text
+
+
+def test_page_has_no_inline_script_or_style() -> None:
+    page = TestClient(create_app()).get("/").text
+    assert "<style" not in page
+    assert "style=" not in page
+    assert "<script>" not in page

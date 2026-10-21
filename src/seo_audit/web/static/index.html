@@ -3,9 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>SEO Audit</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <h1>SEO Audit</h1>
+  <main class="page">
+    <header class="site-header">
+      <h1>SEO Audit</h1>
+      <p>Audit a page or a whole site and get verified, evidence-backed findings.</p>
+    </header>
+
+    <section class="card" id="form-card" aria-label="Audit form">
+      <form id="audit-form" novalidate>
+        <div class="field">
+          <label for="url">URL</label>
+          <input type="text" id="url" name="url" placeholder="https://example.com" autocomplete="off">
+        </div>
+        <button type="submit" class="btn">Run audit</button>
+      </form>
+    </section>
+
+    <section id="results" aria-live="polite"></section>
+  </main>
 </body>
 </html>

@@ -125,7 +125,7 @@
         "Verify in browser using dev-browser skill (desktop and phone width, light and dark)"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

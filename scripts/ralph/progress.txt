@@ -63,3 +63,13 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - Downloads return a plain `Response` (not JSON) so errors still use `_detail()` JSONResponse; the endpoints are `response_model=None`
   - A cancelled job has no report -> 409 like running ones
 ---
+## 2026-10-21 - US-007
+- Added cold slate/ice-blue design system: `styles.css` (tokens for palette, type, spacing, radius; severity badge colours; light + `prefers-color-scheme: dark`; 360px safe), `app.js` stub, page shell (header, form card, empty `#results` section); static dir mounted at `/static`
+- Files: src/seo_audit/web/static/{index.html,styles.css,app.js}, src/seo_audit/web/__init__.py, tests/test_web.py
+- Contrast verified by script: all severity badge fg/bg pairs >= 5.6:1 (light) and >= 7.4:1 (dark); text, muted text and accent pairs >= 4.5:1
+- **Learnings for future iterations:**
+  - Reusable classes: `.card`, `.field`, `.hint`, `.error-text`, `.btn`/`.btn-secondary`, `.badge` + `.badge-{critical,high,medium,low,info}`, `.visually-hidden`; colours only via CSS variables
+  - No inline `<script>`/`style=` anywhere (US-013 CSP `default-src 'self'`): when JS needs styling, toggle classes or use `hidden`, don't set `style` attributes via HTML (CSSOM `el.style.x = ...` is allowed)
+  - `#results:empty` is hidden, so keep the results region free of whitespace text nodes when empty
+  - No browser tooling (dev-browser/MCP/playwright) is available in this environment: browser verification (desktop/360px, light/dark) still needs a manual check
+---
