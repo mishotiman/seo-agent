@@ -24,3 +24,13 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - `max_pages` default and `max_pages_limit` are both `crawl.max_pages`
   - When writing test files from a bash heredoc, `\n` escapes get interpreted - use the Edit tool for strings containing `\n`
 ---
+## 2026-10-21 - US-003
+- Added `JobManager`/`Job`/`JobState`/`JobBusy` in `web/jobs.py`; `start()` creates an asyncio task running `run_audit`; HTTP/LLM factories injectable; max 20 jobs kept
+- Files: src/seo_audit/web/jobs.py, tests/test_jobs.py
+- **Learnings for future iterations:**
+  - No pytest-asyncio: tests wrap scenarios in `asyncio.run`; fake HTTP via `make_client(timeout, transport=httpx.MockTransport(...))`, fake LLM via `LLMClient(model, temp, completion=fn)`
+  - `JobManager.start()` must be called inside a running loop (uses `asyncio.create_task`); in FastAPI use async endpoints
+  - `cancel()` sets state `cancelled` synchronously (and cancels the task); the task then raises CancelledError - awaiting `job.task` raises it
+  - Job has `.finished` timestamp (for "Finished in N s") and `.task`; no change-notification primitive yet - US-005 SSE should poll `job.progress` length/state or add one
+  - Eviction only drops non-active jobs, oldest first
+---
