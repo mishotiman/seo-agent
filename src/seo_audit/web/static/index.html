@@ -19,9 +19,38 @@
       <form id="audit-form" novalidate>
         <div class="field">
           <label for="url">URL</label>
-          <input type="text" id="url" name="url" placeholder="https://example.com" autocomplete="off">
+          <input type="text" id="url" name="url" placeholder="https://example.com" autocomplete="off"
+                 autofocus spellcheck="false" inputmode="url" aria-describedby="url-error">
+          <p class="error-text" id="url-error" hidden></p>
         </div>
-        <button type="submit" class="btn">Run audit</button>
+
+        <fieldset class="field">
+          <legend class="label">Mode</legend>
+          <div class="segmented" id="mode-control">
+            <input type="radio" id="mode-page" name="mode" value="page" checked>
+            <label for="mode-page">Page</label>
+            <input type="radio" id="mode-site" name="mode" value="site">
+            <label for="mode-site">Site</label>
+          </div>
+        </fieldset>
+
+        <div class="field" id="max-pages-field" hidden>
+          <label for="max-pages">Max pages</label>
+          <input type="number" id="max-pages" name="max_pages" min="1" step="1" inputmode="numeric"
+                 aria-describedby="max-pages-hint max-pages-error">
+          <p class="hint" id="max-pages-hint">How many pages to crawl.</p>
+          <p class="error-text" id="max-pages-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="model">Model</label>
+          <input type="text" id="model" name="model" autocomplete="off" spellcheck="false"
+                 aria-describedby="model-hint">
+          <p class="hint" id="model-hint">Any LiteLLM model, e.g. openai/gpt-4o</p>
+        </div>
+
+        <p class="error-text form-error" id="form-error" role="alert" hidden></p>
+        <button type="submit" class="btn" id="run-button">Run audit</button>
       </form>
     </section>
 

@@ -318,3 +318,16 @@ def test_page_has_no_inline_script_or_style() -> None:
     assert "<style" not in page
     assert "style=" not in page
     assert "<script>" not in page
+
+
+def test_form_markup_has_all_controls() -> None:
+    page = TestClient(create_app()).get("/").text
+    assert 'placeholder="https://example.com"' in page
+    assert "autofocus" in page
+    assert 'name="mode" value="page" checked' in page
+    assert 'name="mode" value="site"' in page
+    assert 'id="max-pages-field" hidden' in page
+    assert "Any LiteLLM model, e.g. openai/gpt-4o" in page
+    assert ">Run audit</button>" in page
+    for field in ("url", "max-pages", "model", "mode-page", "mode-site"):
+        assert f'<label for="{field}"' in page

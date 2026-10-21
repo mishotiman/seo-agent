@@ -73,3 +73,13 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - `#results:empty` is hidden, so keep the results region free of whitespace text nodes when empty
   - No browser tooling (dev-browser/MCP/playwright) is available in this environment: browser verification (desktop/360px, light/dark) still needs a manual check
 ---
+## 2026-10-21 - US-008
+- Audit form: URL input (autofocus, inline empty-validation), Page/Site segmented control (radios + labels), max pages (Site only, bounded by `max_pages_limit`), model input with helper line, "Run audit" button; defaults loaded from `GET /api/config`; server 422 messages shown inline (URL / max pages / form-level)
+- Files: src/seo_audit/web/static/{index.html,styles.css,app.js}, tests/test_web.py
+- **Learnings for future iterations:**
+  - On a 202 the form dispatches `document` CustomEvent `audit:started` with `detail {id, request}`; US-009 should listen for it, disable the form, and start streaming (the form currently re-enables itself right after the POST)
+  - `.field` is `display:flex`, so a global `[hidden]{display:none !important}` rule was added; toggle visibility with the `hidden` attribute
+  - Error elements: `#url-error`, `#max-pages-error`, `#form-error` (role=alert, `white-space: pre-line` for multi-line config errors); `setError(el, input, msg)` also toggles `aria-invalid`
+  - Server messages are routed by prefix: `Invalid URL...` -> URL field, `max_pages ...` -> max pages field, everything else (incl. 409 busy) -> form-level
+  - Syntax-check JS with `node --check src/seo_audit/web/static/app.js` (node is available, but no browser tooling): manual browser verification of the form (keyboard focus rings, 360px, dark mode) is still needed
+---
