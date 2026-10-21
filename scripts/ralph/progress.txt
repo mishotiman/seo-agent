@@ -5,6 +5,8 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
 - Use `.venv/Scripts/python.exe -m mypy` (strict, files=src) and `.venv/Scripts/python.exe -m pytest -q` for checks
 - Web UI lives in `src/seo_audit/web/` (`create_app()` in `__init__.py`, CLI in `server.py`, static files in `static/`); tests in `tests/test_web.py`
 - CLI uses typer; `seo-audit-ui` reuses typer via `typer.run(serve)`
+- Web API errors are always `JSONResponse({"detail": str}, status)` via `_detail()` in `web/__init__.py`; endpoints that can return it use `response_model=None`
+- Web tests that need a background job to outlive a request must use `with TestClient(app) as client:` (single event loop); a bare TestClient runs each request in its own loop and kills the task
 
 ---
 
@@ -33,4 +35,14 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - `cancel()` sets state `cancelled` synchronously (and cancels the task); the task then raises CancelledError - awaiting `job.task` raises it
   - Job has `.finished` timestamp (for "Finished in N s") and `.task`; no change-notification primitive yet - US-005 SSE should poll `job.progress` length/state or add one
   - Eviction only drops non-active jobs, oldest first
+---
+## 2026-10-21 - US-004
+- Added `POST /api/audits` (202 `{id}`, 422/409 errors) and `GET /api/audits/{id}`; `create_app(config_path, http_factory, llm_factory)` owns one `JobManager`
+- Files: src/seo_audit/web/__init__.py, tests/test_web.py
+- **Learnings for future iterations:**
+  - Body is taken as `dict` and validated by hand so messages match the CLI (`InvalidInput`/`ConfigError`); a `RequestValidationError` handler turns malformed bodies into a 422 `{"detail": str}`
+  - Overrides (`model`, `max_pages`) are applied via `model_dump` + `Config.model_validate` like `cli._load`; `max_pages` rejects bools/floats/strings and values outside 1..`crawl.max_pages`
+  - `_job_json(job)` is the shared job serializer; the report is `model_dump(mode="json")`
+  - `app.state` has no jobs handle; endpoints close over the local `jobs` in `create_app` (US-005/006 add routes inside `create_app` too)
+  - Use the Write/Edit tools for file edits; `python -` heredocs with `/tmp` paths don't work on this Windows setup (python can't see `/tmp`) and `open(p, "w")` before a failing read truncates the file
 ---
