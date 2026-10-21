@@ -115,3 +115,11 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - Writing files via bash/python heredocs containing quotes failed once; use the Edit tool for JS/CSS
   - No browser tooling again: manual check of 1280x800 above-the-fold behaviour, 360px and dark mode still needed
 ---
+## 2026-10-21 - US-012
+- Results header with "Download Markdown" / "Download JSON" links (`/api/audits/{id}/report.md|json`) and a "New audit" button; collapsible "Issues during the audit" (stage, message, URL; open by default only on total failure); total-failure error panel ("No page could be audited") + issues; `failed` jobs show their `error` in the same panel style; report-level "No findings" notice when nothing was flagged; `New audit` dispatches `audit:reset` and app.js clears the results, keeps form values, focuses the URL
+- Files: src/seo_audit/web/static/{report.js,app.js,styles.css}, tests/test_web.py
+- **Learnings for future iterations:**
+  - app.js `finishRun` now dispatches `audit:finished` for `done` and `failed` jobs (failed job has `report: null`, `error`); `renderReport` branches: no report -> error panel, `isTotalFailure(report)` (JS mirror of `is_total_failure`) -> error panel + issues, else header + summary + issues + findings
+  - `buildIssues` reuses `toggleButton`/`group-head` styling; keep error text via textContent only
+  - Smoke-tested all three render branches in node with a fake DOM; no browser tooling again: manual visual check (desktop/360px, light/dark, download links, New audit) still needed
+---

@@ -737,3 +737,83 @@ input::placeholder {
   margin: 0;
   padding: var(--space-3) var(--space-4);
 }
+
+/* report header, downloads, issues and error panels */
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.report-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.issues {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.issue-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+
+.issue-stage {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.issue-message {
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.issue-url {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.error-panel {
+  padding: var(--space-4);
+  border: 1px solid var(--danger);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+}
+
+.error-title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.error-message {
+  margin: var(--space-2) 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

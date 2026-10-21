@@ -374,3 +374,18 @@ def test_findings_list_assets() -> None:
     css = client.get("/static/styles.css").text
     for selector in (".chip", ".finding-group", ".finding-head", ".group-head", ".badge-source"):
         assert selector in css
+
+
+def test_downloads_errors_and_empty_state_assets() -> None:
+    client = TestClient(create_app())
+    text = client.get("/static/report.js").text
+    for expected in ("Download Markdown", "Download JSON", "/report.", "Issues during the audit", "isTotalFailure",
+                     "No page was fetched successfully", "job.error", "No findings", "New audit", "audit:reset"):
+        assert expected in text
+    assert "innerHTML" not in text and "insertAdjacentHTML" not in text and "outerHTML" not in text
+    js = client.get("/static/app.js").text
+    assert "audit:reset" in js
+    assert 'state === "failed"' in js
+    css = client.get("/static/styles.css").text
+    for selector in (".report-head", ".error-panel", ".issue-list", ".issue-stage"):
+        assert selector in css

@@ -243,10 +243,11 @@ function finishRun(job, state) {
   } else if (state === "cancelled") {
     ui.note.textContent = "Cancelled after " + seconds + " s";
   } else {
-    ui.note.textContent = (job && job.error) || "The audit failed.";
+    // With a job the error panel in the results shows the message; otherwise show it here.
+    ui.note.textContent = job ? "Failed after " + seconds + " s" : "The audit failed.";
     ui.note.classList.add("error-text");
   }
-  if (state === "done" && job) {
+  if ((state === "done" || state === "failed") && job) {
     showReportPlaceholder(job);
   }
   setFormDisabled(false);
@@ -379,6 +380,18 @@ function startRun(id, request) {
 }
 
 document.addEventListener("audit:started", (event) => startRun(event.detail.id, event.detail.request));
+
+// "New audit": clear the results but keep the form values for the next run.
+document.addEventListener("audit:reset", () => {
+  if (run) {
+    return;
+  }
+  resultsRegion.replaceChildren();
+  setFormDisabled(false);
+  clearErrors();
+  urlInput.focus();
+  urlInput.select();
+});
 
 modeInputs.forEach((input) => input.addEventListener("change", syncMode));
 urlInput.addEventListener("input", () => setError(urlError, urlInput, ""));

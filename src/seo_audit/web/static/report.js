@@ -285,6 +285,9 @@
       section.append(filters);
     }
 
+    if (!everything.length) {
+      section.append(h("p", "notice findings-none", "No findings. The audit did not flag anything on the pages it checked."));
+    }
     const list = h("div", "finding-groups");
     groups.forEach((group) => list.append(group.el));
     section.append(list, empty);
@@ -292,14 +295,109 @@
     return section;
   }
 
+  // Mirrors seo_audit.audit.is_total_failure: no page was fetched successfully.
+  function isTotalFailure(report) {
+    const errors = report.errors || [];
+    if (report.mode === "page" && errors.some((error) => error.stage === "fetch")) {
+      return true;
+    }
+    return !(report.pages || []).some((page) => page.status_code != null && page.status_code < 400);
+  }
+
+  function errorList(errors) {
+    const list = h("ul", "issue-list");
+    errors.forEach((error) => {
+      const item = h("li", "issue");
+      item.append(h("span", "issue-stage", error.stage), h("span", "issue-message", error.message));
+      if (error.url) {
+        item.append(h("span", "issue-url", error.url));
+      }
+      list.append(item);
+    });
+    return list;
+  }
+
+  // Collapsible "Issues during the audit" (stage, message, URL); null when there are none.
+  function buildIssues(errors, expanded) {
+    if (!errors.length) {
+      return null;
+    }
+    const section = h("section", "issues");
+    const panel = h("div", "issues-body");
+    panel.append(errorList(errors));
+    const head = toggleButton("group-head", panel, expanded);
+    head.append(h("span", "group-title", "Issues during the audit"), h("span", "group-count", String(errors.length)));
+    section.append(head, panel);
+    return section;
+  }
+
+  function errorPanel(title, message) {
+    const panel = h("div", "error-panel");
+    panel.setAttribute("role", "alert");
+    panel.append(h("h2", "error-title", title));
+    if (message) {
+      panel.append(h("p", "error-message", message));
+    }
+    return panel;
+  }
+
+  function downloadLink(job, ext, label) {
+    const link = h("a", "btn btn-secondary", label);
+    link.href = "/api/audits/" + encodeURIComponent(job.id) + "/report." + ext;
+    link.setAttribute("download", "");
+    return link;
+  }
+
+  function newAuditButton() {
+    const button = h("button", "btn btn-secondary", "New audit");
+    button.type = "button";
+    button.addEventListener("click", () => document.dispatchEvent(new CustomEvent("audit:reset")));
+    return button;
+  }
+
+  function reportHeader(job, withDownloads) {
+    const head = h("div", "report-head");
+    head.append(h("h2", "report-title", withDownloads ? "Results" : "Audit failed"));
+    const actions = h("div", "report-actions");
+    if (withDownloads) {
+      actions.append(downloadLink(job, "md", "Download Markdown"), downloadLink(job, "json", "Download JSON"));
+    }
+    actions.append(newAuditButton());
+    head.append(actions);
+    return head;
+  }
+
   function renderReport(container, job) {
     container.replaceChildren();
-    if (!job || !job.report) {
+    if (!job) {
       return;
     }
     container.classList.remove("report-placeholder");
     container.classList.add("card", "report");
-    container.append(buildSummary(job.report), buildFindings(job.report));
+    const report = job.report;
+    if (!report) {
+      // A failed job (no report): show its error message.
+      container.append(reportHeader(job, false), errorPanel("The audit could not be completed", job.error || "The audit failed."));
+      return;
+    }
+    const errors = report.errors || [];
+    if (isTotalFailure(report)) {
+      const issues = buildIssues(errors, true);
+      container.append(
+        reportHeader(job, false),
+        errorPanel("No page could be audited", "No page was fetched successfully, so there are no results to show. The issues below say what went wrong."),
+      );
+      if (issues) {
+        container.append(issues);
+      }
+      return;
+    }
+    container.append(reportHeader(job, true), buildSummary(report));
+    const issues = buildIssues(errors, false);
+    if (issues) {
+      container.append(issues);
+    }
+    container.append(buildFindings(report));
   }
 
   document.addEventListener("audit:finished", (event) => {
