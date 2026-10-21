@@ -15,6 +15,8 @@ dependencies = [
     "pydantic>=2.6",
     "pyyaml>=6.0",
     "typer>=0.12",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
 ]
 
 [project.optional-dependencies]
@@ -22,9 +24,13 @@ dev = ["pytest>=8.0", "mypy>=1.10", "types-PyYAML", "jsonschema>=4.0", "types-js
 
 [project.scripts]
 seo-audit = "seo_audit.cli:app"
+seo-audit-ui = "seo_audit.web.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"seo_audit.web" = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
