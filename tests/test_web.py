@@ -245,3 +245,55 @@ def test_cancel_finished_and_unknown(audit_client: TestClient) -> None:
     _wait_finished(audit_client, job_id)
     assert audit_client.post(f"/api/audits/{job_id}/cancel").status_code == 409
     assert audit_client.post("/api/audits/nope/cancel").status_code == 404
+
+
+def test_report_downloads(audit_client: TestClient) -> None:
+    job_id = audit_client.post("/api/audits", json={"url": "https://example.com/", "mode": "page"}).json()["id"]
+    body = _wait_finished(audit_client, job_id)
+
+    md = audit_client.get(f"/api/audits/{job_id}/report.md")
+    assert md.status_code == 200
+    assert md.headers["content-type"] == "text/markdown; charset=utf-8"
+    assert md.headers["content-disposition"] == 'attachment; filename="seo-audit-example.com.md"'
+    assert md.text.startswith("# SEO audit report: https://example.com/")
+
+    js = audit_client.get(f"/api/audits/{job_id}/report.json")
+    assert js.status_code == 200
+    assert js.headers["content-type"].startswith("application/json")
+    assert js.headers["content-disposition"] == 'attachment; filename="seo-audit-example.com.json"'
+    assert js.json() == body["report"]
+    assert "\n  " in js.text  # indented
+
+
+def test_report_filename_is_sanitized() -> None:
+    from seo_audit.web import _report_filename
+
+    assert _report_filename("https://exa mple.com:8080/a?b=c", "md") == "seo-audit-exa-mple.com.md"
+    assert _report_filename("https://[::1]/", "json") == "seo-audit-1.json"
+    assert _report_filename("not a url", "md") == "seo-audit-report.md"
+
+
+def test_report_unknown_and_unfinished(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SEO_AUDIT_MODEL", raising=False)
+    path = tmp_path / "config.yaml"
+    path.write_text("model: test/model\n", encoding="utf-8")
+
+    async def hang(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(30)
+        return httpx.Response(200)
+
+    def factory(timeout: float) -> httpx.AsyncClient:
+        return make_client(timeout, transport=httpx.MockTransport(hang))
+
+    with TestClient(create_app(path, factory, _llm_factory)) as client:
+        for ext in ("md", "json"):
+            missing = client.get(f"/api/audits/nope/report.{ext}")
+            assert missing.status_code == 404
+            assert "detail" in missing.json()
+        job_id = client.post("/api/audits", json={"url": "https://example.com/", "mode": "page"}).json()["id"]
+        for ext in ("md", "json"):
+            running = client.get(f"/api/audits/{job_id}/report.{ext}")
+            assert running.status_code == 409
+            assert "detail" in running.json()
+        client.post(f"/api/audits/{job_id}/cancel")
+        assert client.get(f"/api/audits/{job_id}/report.md").status_code == 409

@@ -55,3 +55,11 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - In tests, `client.stream("GET", url)` + `response.read()` works for SSE because the stream ends once the job is final
   - Do not write Python string escapes (`\n`) via `python - <<EOF` replacement strings: they become real newlines; use the Edit tool
 ---
+## 2026-10-21 - US-006
+- Added `GET /api/audits/{id}/report.md` (render_markdown) and `report.json` (`model_dump_json(indent=2)`) as attachments with sanitized `seo-audit-<host>.<ext>` filenames; 404 unknown, 409 when job not `done`
+- Files: src/seo_audit/web/__init__.py, tests/test_web.py
+- **Learnings for future iterations:**
+  - Both downloads share the `report_download` helper inside `create_app`; filename from `_report_filename(job.url, ext)` (hostname only, non `[A-Za-z0-9.-]` runs -> `-`, falls back to `report`)
+  - Downloads return a plain `Response` (not JSON) so errors still use `_detail()` JSONResponse; the endpoints are `response_model=None`
+  - A cancelled job has no report -> 409 like running ones
+---

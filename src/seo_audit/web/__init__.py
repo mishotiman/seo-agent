@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+import re
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import Body, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 
 from seo_audit.audit import InvalidInput, validate_url
 from seo_audit.config import Config, ConfigError, load_config
 from seo_audit.fetcher import make_client
 from seo_audit.llm import LLMClient
-from seo_audit.schema import Mode
-from seo_audit.web.jobs import HttpFactory, Job, JobBusy, JobManager, LLMFactory
+from seo_audit.report import render_markdown
+from seo_audit.schema import AuditReport, Mode
+from seo_audit.web.jobs import HttpFactory, Job, JobBusy, JobManager, JobState, LLMFactory
 
 STATIC_DIR = Path(__file__).parent / "static"
 EVENT_POLL_SECONDS = 0.1
@@ -43,6 +46,11 @@ async def _job_events(job: Job) -> AsyncIterator[str]:
             yield _sse("state", state.value)
             return
         await asyncio.sleep(EVENT_POLL_SECONDS)
+
+
+def _report_filename(url: str, extension: str) -> str:
+    host = re.sub(r"[^A-Za-z0-9.-]+", "-", urlsplit(url).hostname or "").strip("-.")
+    return f"seo-audit-{host or 'report'}.{extension}"
 
 
 def _job_json(job: Job) -> dict[str, Any]:
@@ -149,6 +157,28 @@ def create_app(
             return _detail("Audit has already finished", 409)
         jobs.cancel(job_id)
         return {"state": job.state.value}
+
+    def report_download(job_id: str, extension: str, media_type: str, render: Callable[[AuditReport], str]) -> Response:
+        job = jobs.get(job_id)
+        if job is None:
+            return _detail("Audit not found", 404)
+        if job.state != JobState.DONE or job.report is None:
+            return _detail("Audit has no report yet", 409)
+        return Response(
+            render(job.report),
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{_report_filename(job.url, extension)}"'},
+        )
+
+    @app.get("/api/audits/{job_id}/report.md", response_model=None)
+    async def report_markdown(job_id: str) -> Response:
+        return report_download(job_id, "md", "text/markdown; charset=utf-8", render_markdown)
+
+    @app.get("/api/audits/{job_id}/report.json", response_model=None)
+    async def report_json(job_id: str) -> Response:
+        return report_download(
+            job_id, "json", "application/json", lambda report: report.model_dump_json(indent=2)
+        )
 
     @app.get("/")
     async def index() -> FileResponse:
