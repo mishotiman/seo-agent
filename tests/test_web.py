@@ -331,3 +331,16 @@ def test_form_markup_has_all_controls() -> None:
     assert ">Run audit</button>" in page
     for field in ("url", "max-pages", "model", "mode-page", "mode-site"):
         assert f'<label for="{field}"' in page
+
+
+def test_run_ui_assets_cover_progress_stream_and_fallback() -> None:
+    client = TestClient(create_app())
+    js = client.get("/static/app.js").text
+    assert "/events" in js and "EventSource" in js
+    assert "/cancel" in js
+    assert "POLL_MS = 2000" in js
+    assert "Finished in " in js
+    assert "innerHTML" not in js
+    css = client.get("/static/styles.css").text
+    assert "prefers-reduced-motion: reduce" in css
+    assert "indicator-spin" in css

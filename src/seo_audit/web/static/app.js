@@ -107,9 +107,15 @@ function showServerError(message) {
   }
 }
 
+function setFormDisabled(disabled) {
+  form.querySelectorAll("input, button").forEach((control) => {
+    control.disabled = disabled;
+  });
+}
+
 async function submitForm(event) {
   event.preventDefault();
-  if (submitting) {
+  if (submitting || form.classList.contains("is-running")) {
     return;
   }
   const body = readForm();
@@ -118,6 +124,7 @@ async function submitForm(event) {
   }
   submitting = true;
   runButton.disabled = true;
+  let started = false;
   try {
     const response = await fetch("/api/audits", {
       method: "POST",
@@ -126,6 +133,7 @@ async function submitForm(event) {
     });
     const data = await response.json().catch(() => ({}));
     if (response.status === 202) {
+      started = true;
       document.dispatchEvent(new CustomEvent("audit:started", { detail: { id: data.id, request: body } }));
     } else {
       showServerError(data.detail || "The audit could not be started (HTTP " + response.status + ").");
@@ -134,9 +142,243 @@ async function submitForm(event) {
     setError(formError, null, "Could not reach the server.");
   } finally {
     submitting = false;
-    runButton.disabled = false;
+    if (!started) {
+      runButton.disabled = false;
+    }
   }
 }
+
+// ---- Running an audit: progress card, event stream, polling fallback ----
+
+const resultsRegion = document.getElementById("results");
+const POLL_MS = 2000;
+const ACTIVE_STATES = ["queued", "running"];
+const STATE_LABELS = {
+  queued: "Queued",
+  running: "Running",
+  done: "Finished",
+  failed: "Failed",
+  cancelled: "Cancelled",
+};
+
+let run = null;
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) {
+    node.className = className;
+  }
+  if (text !== undefined) {
+    node.textContent = text;
+  }
+  return node;
+}
+
+function buildProgressCard(url) {
+  const card = el("section", "card progress-card");
+  card.setAttribute("aria-label", "Audit progress");
+
+  const head = el("div", "progress-head");
+  const title = el("div", "progress-title");
+  const indicator = el("span", "indicator");
+  indicator.setAttribute("aria-hidden", "true");
+  const stateLabel = el("span", "progress-state", STATE_LABELS.queued);
+  title.append(indicator, stateLabel);
+  const cancel = el("button", "btn btn-secondary", "Cancel");
+  cancel.type = "button";
+  head.append(title, cancel);
+
+  const target = el("p", "progress-url", url);
+  const log = el("div", "progress-log");
+  log.setAttribute("role", "log");
+  log.setAttribute("aria-label", "Progress messages");
+  log.tabIndex = 0;
+  const note = el("p", "progress-note");
+  note.hidden = true;
+
+  card.append(head, target, log, note);
+  return { card, indicator, stateLabel, cancel, log, note };
+}
+
+function setIndicator(ui, state) {
+  ui.indicator.dataset.state = state;
+  ui.stateLabel.textContent = STATE_LABELS[state] || state;
+}
+
+function appendProgress(message) {
+  const line = el("div", "progress-line", message);
+  run.ui.log.append(line);
+  run.ui.log.scrollTop = run.ui.log.scrollHeight;
+  run.shown += 1;
+}
+
+function stopStream() {
+  if (run.source) {
+    run.source.close();
+    run.source = null;
+  }
+  if (run.timer) {
+    clearTimeout(run.timer);
+    run.timer = null;
+  }
+}
+
+function showReportPlaceholder(job) {
+  const holder = el("section", "report-placeholder");
+  holder.id = "report";
+  resultsRegion.append(holder);
+  document.dispatchEvent(new CustomEvent("audit:finished", { detail: { job: job, container: holder } }));
+}
+
+function finishRun(job, state) {
+  stopStream();
+  const ui = run.ui;
+  const seconds = Math.max(1, Math.round((Date.now() - run.startedAt) / 1000));
+  setIndicator(ui, state);
+  ui.cancel.hidden = true;
+  ui.note.hidden = false;
+  if (state === "done") {
+    ui.card.classList.add("is-collapsed");
+    ui.note.textContent = "Finished in " + seconds + " s";
+  } else if (state === "cancelled") {
+    ui.note.textContent = "Cancelled after " + seconds + " s";
+  } else {
+    ui.note.textContent = (job && job.error) || "The audit failed.";
+    ui.note.classList.add("error-text");
+  }
+  if (state === "done" && job) {
+    showReportPlaceholder(job);
+  }
+  setFormDisabled(false);
+  form.classList.remove("is-running");
+  run = null;
+}
+
+async function fetchJob(id) {
+  const response = await fetch("/api/audits/" + encodeURIComponent(id));
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+// Fetch the final job (report / error) and settle the UI.
+async function settle(id, state) {
+  if (!run || run.id !== id) {
+    return;
+  }
+  stopStream();
+  let job = null;
+  try {
+    job = await fetchJob(id);
+    if (!run || run.id !== id) {
+      return;
+    }
+    job.progress.slice(run.shown).forEach(appendProgress);
+  } catch (err) {
+    // Keep the state we already know; there is no report to show.
+  }
+  finishRun(job, job ? job.state : state);
+}
+
+function poll(id) {
+  if (!run || run.id !== id) {
+    return;
+  }
+  run.timer = setTimeout(async () => {
+    if (!run || run.id !== id) {
+      return;
+    }
+    run.timer = null;
+    try {
+      const job = await fetchJob(id);
+      if (!run || run.id !== id) {
+        return;
+      }
+      job.progress.slice(run.shown).forEach(appendProgress);
+      if (ACTIVE_STATES.includes(job.state)) {
+        setIndicator(run.ui, job.state);
+        poll(id);
+      } else {
+        settle(id, job.state);
+      }
+    } catch (err) {
+      poll(id);
+    }
+  }, POLL_MS);
+}
+
+function followEvents(id) {
+  if (typeof EventSource === "undefined") {
+    poll(id);
+    return;
+  }
+  const source = new EventSource("/api/audits/" + encodeURIComponent(id) + "/events");
+  run.source = source;
+  source.addEventListener("progress", (event) => {
+    if (run && run.id === id) {
+      setIndicator(run.ui, "running");
+      appendProgress(event.data);
+    }
+  });
+  source.addEventListener("state", (event) => {
+    settle(id, event.data);
+  });
+  source.onerror = () => {
+    // Stream dropped before the final state: stop the auto-reconnect (it would replay
+    // everything) and poll the job instead.
+    if (run && run.id === id && run.source === source) {
+      source.close();
+      run.source = null;
+      poll(id);
+    }
+  };
+}
+
+async function cancelRun() {
+  if (!run) {
+    return;
+  }
+  const id = run.id;
+  run.ui.cancel.disabled = true;
+  try {
+    const response = await fetch("/api/audits/" + encodeURIComponent(id) + "/cancel", { method: "POST" });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) {
+      await settle(id, data.state || "cancelled");
+      return;
+    }
+    if (response.status === 409) {
+      // Already finished: pick up the real outcome.
+      await settle(id, "done");
+      return;
+    }
+    setError(formError, null, data.detail || "The audit could not be cancelled.");
+  } catch (err) {
+    setError(formError, null, "Could not reach the server.");
+  }
+  if (run && run.id === id) {
+    run.ui.cancel.disabled = false;
+  }
+}
+
+function startRun(id, request) {
+  if (run) {
+    stopStream();
+  }
+  resultsRegion.replaceChildren();
+  const ui = buildProgressCard(request.url);
+  resultsRegion.append(ui.card);
+  run = { id: id, ui: ui, shown: 0, startedAt: Date.now(), source: null, timer: null };
+  setIndicator(ui, "queued");
+  ui.cancel.addEventListener("click", cancelRun);
+  form.classList.add("is-running");
+  setFormDisabled(true);
+  ui.card.scrollIntoView({ block: "nearest" });
+  followEvents(id);
+}
+
+document.addEventListener("audit:started", (event) => startRun(event.detail.id, event.detail.request));
 
 modeInputs.forEach((input) => input.addEventListener("change", syncMode));
 urlInput.addEventListener("input", () => setError(urlError, urlInput, ""));

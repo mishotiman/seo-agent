@@ -162,7 +162,7 @@
         "Verify in browser using dev-browser skill (page-mode audit against a local test server or a mocked backend)"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

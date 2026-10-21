@@ -355,3 +355,125 @@ input::placeholder {
     width: 100%;
   }
 }
+
+/* progress card */
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.progress-head .btn {
+  width: auto;
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-4);
+}
+
+.progress-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.progress-url {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.progress-log {
+  max-height: 16rem;
+  overflow-y: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+.progress-line {
+  white-space: pre-wrap;
+}
+
+.progress-log:empty::before {
+  content: "Waiting for the first message...";
+  color: var(--text-muted);
+}
+
+.progress-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.progress-note.error-text {
+  color: var(--danger);
+}
+
+.progress-card.is-collapsed {
+  padding-block: var(--space-3);
+}
+
+.progress-card.is-collapsed .progress-url,
+.progress-card.is-collapsed .progress-log {
+  display: none;
+}
+
+.indicator {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.indicator[data-state="queued"],
+.indicator[data-state="running"] {
+  border-color: var(--accent-soft);
+  border-top-color: var(--accent);
+  animation: indicator-spin 0.9s linear infinite;
+}
+
+.indicator[data-state="done"] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.indicator[data-state="failed"] {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+@keyframes indicator-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator {
+    animation: none !important;
+  }
+
+  .indicator[data-state="queued"],
+  .indicator[data-state="running"] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+}
+
+.report-placeholder:empty {
+  display: none;
+}

@@ -83,3 +83,13 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - Server messages are routed by prefix: `Invalid URL...` -> URL field, `max_pages ...` -> max pages field, everything else (incl. 409 busy) -> form-level
   - Syntax-check JS with `node --check src/seo_audit/web/static/app.js` (node is available, but no browser tooling): manual browser verification of the form (keyboard focus rings, 360px, dark mode) is still needed
 ---
+## 2026-10-21 - US-009
+- Submitting the form now keeps it disabled (`form.is-running`) and builds a progress card in `#results`: URL, state indicator (CSS spinner, static under `prefers-reduced-motion`), auto-scrolled log, Cancel button; streams `/events` via EventSource, falls back to polling `GET /api/audits/{id}` every 2 s if the stream errors before the final `state` event; done -> card collapses to "Finished in N s"; cancelled/failed show a note; form re-enabled on any end state
+- Files: src/seo_audit/web/static/{app.js,styles.css}, tests/test_web.py
+- **Learnings for future iterations:**
+  - On completion `document` gets a CustomEvent `audit:finished` with `detail {job, container}`; `container` is an empty `<section id="report" class="report-placeholder">` appended to `#results` - US-010..012 should render the report into it (job.report is the AuditReport JSON; job.state/error for failed)
+  - "Finished in N s" is measured client-side (no timing in the job JSON)
+  - Module-level `run` holds the active audit (`id, ui, shown, source, timer`); `settle(id, state)` fetches the final job and calls `finishRun`; guard async callbacks with `run && run.id === id`
+  - `setFormDisabled(bool)` toggles all form inputs/buttons; 409 "already running" still goes through `showServerError` to `#form-error`
+  - No browser tooling available again: manual verification of the live progress run (desktop/360px, light/dark, reduced motion) is still needed
+---
