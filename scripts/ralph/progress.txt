@@ -93,3 +93,14 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - `setFormDisabled(bool)` toggles all form inputs/buttons; 409 "already running" still goes through `showServerError` to `#form-error`
   - No browser tooling available again: manual verification of the live progress run (desktop/360px, light/dark, reduced motion) is still needed
 ---
+## 2026-10-21 - US-010
+- Results summary: new `static/report.js` listens for `audit:finished` and renders into the `#report` container: stat tiles (pages crawled / skipped / findings), per-severity badges, meta line (mode, model, tokens), calm crawl-limit notice (`max_pages` / `max_depth` / `time_budget`), "What to fix first" ordered list (hidden when `site_summary` is empty), dropped-model-findings note
+- Files: src/seo_audit/web/static/{report.js,index.html,styles.css}, tests/test_web.py
+- **Learnings for future iterations:**
+  - `report.js` is an IIFE with its own `h(tag, class, text)` helper; US-011/012 should extend it (`renderReport(container, job)` builds into the container; `buildSummary(report)` is the summary block; `allFindings`/`countBySeverity` helpers exist). It is loaded before `app.js` in index.html
+  - `renderReport` swaps the container's `report-placeholder` class for `card report`; failed/no-report jobs leave it empty (so `.report-placeholder:empty` hides it) - US-012 must render errors for those cases (the `audit:finished` event is currently only dispatched for state `done`; app.js `finishRun` needs to dispatch for `failed` too)
+  - Report text goes in only via `textContent`; a test asserts `innerHTML`/`insertAdjacentHTML`/`outerHTML` never appear in report.js
+  - Smoke-test rendering logic without a browser by evaluating report.js in node against a tiny fake `document` (createElement/addEventListener) and printing `textContent`
+  - Classes added: `.stat-tiles/.stat-tile/.stat-value/.stat-label`, `.severity-row`, `.report-meta`, `.notice`, `.section-title`, `.fix-list`
+  - No browser tooling again: manual visual verification (desktop/360px, light/dark) still needed
+---

@@ -344,3 +344,21 @@ def test_run_ui_assets_cover_progress_stream_and_fallback() -> None:
     css = client.get("/static/styles.css").text
     assert "prefers-reduced-motion: reduce" in css
     assert "indicator-spin" in css
+
+
+def test_results_summary_assets() -> None:
+    client = TestClient(create_app())
+    assert "/static/report.js" in client.get("/").text
+    js = client.get("/static/report.js")
+    assert js.status_code == 200
+    text = js.text
+    for expected in ("audit:finished", "What to fix first", "pages_crawled", "pages_skipped", "limit_hit",
+                     "dropped_model_findings", "total_tokens", "site_summary", "could not be verified"):
+        assert expected in text
+    for severity in ("critical", "high", "medium", "low", "info"):
+        assert f'"{severity}"' in text
+    # report text comes from audited sites: never inject it as HTML
+    assert "innerHTML" not in text and "insertAdjacentHTML" not in text and "outerHTML" not in text
+    css = client.get("/static/styles.css").text
+    for selector in (".stat-tile", ".severity-row", ".notice", ".fix-list"):
+        assert selector in css
