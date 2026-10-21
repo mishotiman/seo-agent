@@ -16,3 +16,11 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - Static files are packaged via `[tool.setuptools.package-data]` "seo_audit.web" = ["static/*"]
   - Server entry point is `seo_audit.web.server:main`; `serve` is the typer function (testable via a Typer app)
 ---
+## 2026-10-21 - US-002
+- Added `GET /api/config` (model, max_pages, max_pages_limit, modes); `ConfigError` -> 500 `{"detail": ...}`
+- Files: src/seo_audit/web/__init__.py, tests/test_web.py
+- **Learnings for future iterations:**
+  - `create_app(config_path=None)` accepts an optional config path so tests use a tmp config.yaml (delete SEO_AUDIT_* env vars with monkeypatch in tests)
+  - `max_pages` default and `max_pages_limit` are both `crawl.max_pages`
+  - When writing test files from a bash heredoc, `\n` escapes get interpreted - use the Edit tool for strings containing `\n`
+---
