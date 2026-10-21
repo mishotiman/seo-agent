@@ -181,3 +181,67 @@ def test_unknown_audit_id(audit_client: TestClient) -> None:
     response = audit_client.get("/api/audits/nope")
     assert response.status_code == 404
     assert "detail" in response.json()
+
+
+def _events(client: TestClient, job_id: str) -> list[tuple[str, str]]:
+    events: list[tuple[str, str]] = []
+    with client.stream("GET", f"/api/audits/{job_id}/events") as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        for block in response.read().decode().strip().split("\n\n"):
+            lines = block.split("\n")
+            events.append((lines[0].removeprefix("event: "), "\n".join(x.removeprefix("data: ") for x in lines[1:])))
+    return events
+
+
+def test_events_replay_finished_job(audit_client: TestClient) -> None:
+    job_id = audit_client.post("/api/audits", json={"url": "https://example.com/", "mode": "page"}).json()["id"]
+    body = _wait_finished(audit_client, job_id)
+    events = _events(audit_client, job_id)
+    assert [data for kind, data in events if kind == "progress"] == body["progress"]
+    assert events[0] == ("progress", "Fetching https://example.com/")
+    assert events[-1] == ("state", "done")
+    assert [kind for kind, _ in events].count("state") == 1
+
+
+def test_events_follow_running_job(audit_client: TestClient) -> None:
+    job_id = audit_client.post("/api/audits", json={"url": "https://example.com/", "mode": "page"}).json()["id"]
+    events = _events(audit_client, job_id)  # connects while the job may still be running
+    assert events[0] == ("progress", "Fetching https://example.com/")
+    assert events[-1] == ("state", "done")
+    assert _wait_finished(audit_client, job_id)["progress"] == [d for k, d in events if k == "progress"]
+
+
+def test_events_unknown_id(audit_client: TestClient) -> None:
+    assert audit_client.get("/api/audits/nope/events").status_code == 404
+
+
+def test_cancel_running_audit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SEO_AUDIT_MODEL", raising=False)
+    path = tmp_path / "config.yaml"
+    path.write_text("model: test/model\n", encoding="utf-8")
+
+    async def hang(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(30)
+        return httpx.Response(200)
+
+    def factory(timeout: float) -> httpx.AsyncClient:
+        return make_client(timeout, transport=httpx.MockTransport(hang))
+
+    with TestClient(create_app(path, factory, _llm_factory)) as client:
+        job_id = client.post("/api/audits", json={"url": "https://example.com/", "mode": "page"}).json()["id"]
+        response = client.post(f"/api/audits/{job_id}/cancel")
+        assert response.status_code == 200
+        assert response.json() == {"state": "cancelled"}
+        assert client.get(f"/api/audits/{job_id}").json()["state"] == "cancelled"
+        assert _events(client, job_id)[-1] == ("state", "cancelled")
+        again = client.post(f"/api/audits/{job_id}/cancel")
+        assert again.status_code == 409
+        assert "detail" in again.json()
+
+
+def test_cancel_finished_and_unknown(audit_client: TestClient) -> None:
+    job_id = audit_client.post("/api/audits", json={"url": "https://example.com/", "mode": "page"}).json()["id"]
+    _wait_finished(audit_client, job_id)
+    assert audit_client.post(f"/api/audits/{job_id}/cancel").status_code == 409
+    assert audit_client.post("/api/audits/nope/cancel").status_code == 404

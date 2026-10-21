@@ -53,7 +53,11 @@ class Job:
 
     @property
     def active(self) -> bool:
-        return self.state in ACTIVE_STATES
+        return self.active_state(self.state)
+
+    @staticmethod
+    def active_state(state: JobState) -> bool:
+        return state in ACTIVE_STATES
 
     def finish(self, state: JobState) -> None:
         self.state = state

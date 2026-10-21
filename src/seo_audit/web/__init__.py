@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
 from fastapi import Body, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from seo_audit.audit import InvalidInput, validate_url
 from seo_audit.config import Config, ConfigError, load_config
@@ -17,10 +19,30 @@ from seo_audit.schema import Mode
 from seo_audit.web.jobs import HttpFactory, Job, JobBusy, JobManager, LLMFactory
 
 STATIC_DIR = Path(__file__).parent / "static"
+EVENT_POLL_SECONDS = 0.1
 
 
 def _detail(message: str, status_code: int) -> JSONResponse:
     return JSONResponse({"detail": message}, status_code=status_code)
+
+
+def _sse(event: str, data: str) -> str:
+    lines = "".join(f"data: {line}\n" for line in data.splitlines() or [""])
+    return f"event: {event}\n{lines}\n"
+
+
+async def _job_events(job: Job) -> AsyncIterator[str]:
+    """Replay the job's progress messages, follow new ones, then emit the final state."""
+    sent = 0
+    while True:
+        state = job.state  # read first so messages appended before the state change are not lost
+        while sent < len(job.progress):
+            yield _sse("progress", job.progress[sent])
+            sent += 1
+        if not job.active_state(state):
+            yield _sse("state", state.value)
+            return
+        await asyncio.sleep(EVENT_POLL_SECONDS)
 
 
 def _job_json(job: Job) -> dict[str, Any]:
@@ -106,6 +128,27 @@ def create_app(
         if job is None:
             return _detail("Audit not found", 404)
         return _job_json(job)
+
+    @app.get("/api/audits/{job_id}/events", response_model=None)
+    async def audit_events(job_id: str) -> StreamingResponse | JSONResponse:
+        job = jobs.get(job_id)
+        if job is None:
+            return _detail("Audit not found", 404)
+        return StreamingResponse(
+            _job_events(job),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    @app.post("/api/audits/{job_id}/cancel", response_model=None)
+    async def cancel_audit(job_id: str) -> dict[str, str] | JSONResponse:
+        job = jobs.get(job_id)
+        if job is None:
+            return _detail("Audit not found", 404)
+        if not job.active:
+            return _detail("Audit has already finished", 409)
+        jobs.cancel(job_id)
+        return {"state": job.state.value}
 
     @app.get("/")
     async def index() -> FileResponse:

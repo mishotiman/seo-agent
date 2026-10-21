@@ -46,3 +46,12 @@ Started: Wed Oct 21 11:02:02 FLEDT 2026
   - `app.state` has no jobs handle; endpoints close over the local `jobs` in `create_app` (US-005/006 add routes inside `create_app` too)
   - Use the Write/Edit tools for file edits; `python -` heredocs with `/tmp` paths don't work on this Windows setup (python can't see `/tmp`) and `open(p, "w")` before a failing read truncates the file
 ---
+## 2026-10-21 - US-005
+- Added `GET /api/audits/{id}/events` (SSE: replays progress, follows new ones as `event: progress`, ends with `event: state`) and `POST /api/audits/{id}/cancel` (200 `{state}`, 409 finished, 404 unknown)
+- Files: src/seo_audit/web/__init__.py, src/seo_audit/web/jobs.py (`Job.active_state` static helper), tests/test_web.py
+- **Learnings for future iterations:**
+  - SSE generator polls the job every `EVENT_POLL_SECONDS` (0.1s) rather than using a notification primitive; it reads `job.state` before draining `job.progress` so no trailing messages are lost
+  - Multi-line messages are split into several `data:` lines by `_sse`; clients rejoin with "\n"
+  - In tests, `client.stream("GET", url)` + `response.read()` works for SSE because the stream ends once the job is final
+  - Do not write Python string escapes (`\n`) via `python - <<EOF` replacement strings: they become real newlines; use the Edit tool
+---
